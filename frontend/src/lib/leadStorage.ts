@@ -2,8 +2,11 @@
 import { db } from './firebase';
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp, Timestamp, DocumentReference, DocumentData
+  query, where, orderBy, serverTimestamp, Timestamp, DocumentReference, DocumentData, Firestore, writeBatch
 } from 'firebase/firestore';
+
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
 
 export interface Lead {
   id: string; // Changed from number to string for Firestore document IDs
@@ -103,9 +106,6 @@ const initialLeads: Omit<Lead, 'id'>[] = [
 // LocalStorage helper functions
 const LOCAL_STORAGE_KEY = 'buddyboard_leads';
 
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
-
 // Initialize local storage with mock data if empty
 function initLocalStorage(): void {
   if (!isBrowser) return;
@@ -139,14 +139,20 @@ function saveLeadsToLocalStorage(leads: Lead[]): void {
 
 // Function to get all leads
 export async function getLeads(): Promise<Lead[]> {
+  // If not in browser, return empty array (for SSR)
+  if (!isBrowser) return [];
+  
   try {
+    console.log("Attempting to fetch leads from Firebase...");
     const leadsRef = collection(db, 'leads');
     const querySnapshot = await getDocs(leadsRef);
     
     if (querySnapshot.empty) {
-      // If no leads in Firestore, fall back to local storage
+      console.log("No leads found in Firebase, retrieving from localStorage");
       return getLeadsFromLocalStorage();
     }
+    
+    console.log(`Successfully retrieved ${querySnapshot.docs.length} leads from Firebase`);
     
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
@@ -165,7 +171,11 @@ export async function getLeads(): Promise<Lead[]> {
 
 // Function to add a new lead
 export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>): Promise<Lead | null> {
+  // If not in browser, return null (for SSR)
+  if (!isBrowser) return null;
+  
   try {
+    console.log("Attempting to add lead to Firebase...");
     const leadsRef = collection(db, 'leads');
     
     // Create new lead with timestamp and default status
@@ -176,6 +186,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
     };
     
     const docRef = await addDoc(leadsRef, newLead);
+    console.log(`Successfully added lead to Firebase with ID: ${docRef.id}`);
     
     return {
       id: docRef.id,
@@ -205,7 +216,18 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
 
 // Function to update a lead
 export async function updateLead(id: string, updates: Partial<Lead>): Promise<Lead | null> {
+  // If not in browser, return null (for SSR)
+  if (!isBrowser) return null;
+  
   try {
+    console.log(`Attempting to update lead ${id} in Firebase...`);
+    
+    // Check if it's a local ID (starts with 'local-')
+    if (id.startsWith('local-')) {
+      console.log(`Local ID detected: ${id}. Using localStorage.`);
+      throw new Error('Local ID - using localStorage instead'); // Skip to catch block
+    }
+    
     const leadRef = doc(db, 'leads', id);
     
     // Remove id from updates if it exists
@@ -213,6 +235,7 @@ export async function updateLead(id: string, updates: Partial<Lead>): Promise<Le
     
     // Update the lead in Firestore
     await updateDoc(leadRef, updatesWithoutId);
+    console.log(`Successfully updated lead ${id} in Firebase`);
     
     // Get the updated lead
     const updatedLeads = await getLeads();
@@ -238,9 +261,21 @@ export async function updateLead(id: string, updates: Partial<Lead>): Promise<Le
 
 // Function to delete a lead
 export async function deleteLead(id: string): Promise<boolean> {
+  // If not in browser, return false (for SSR)
+  if (!isBrowser) return false;
+  
   try {
+    console.log(`Attempting to delete lead ${id} from Firebase...`);
+    
+    // Check if it's a local ID (starts with 'local-')
+    if (id.startsWith('local-')) {
+      console.log(`Local ID detected: ${id}. Using localStorage.`);
+      throw new Error('Local ID - using localStorage instead'); // Skip to catch block
+    }
+    
     const leadRef = doc(db, 'leads', id);
     await deleteDoc(leadRef);
+    console.log(`Successfully deleted lead ${id} from Firebase`);
     return true;
   } catch (error) {
     console.error("Error deleting lead from Firebase:", error);
@@ -264,23 +299,34 @@ export async function seedInitialData(): Promise<void> {
   if (!isBrowser) return;
   
   try {
+    console.log("Checking Firebase connectivity and seeding data if needed...");
     const leadsRef = collection(db, 'leads');
     const querySnapshot = await getDocs(leadsRef);
     
     // Only seed if collection is empty
     if (querySnapshot.empty) {
-      console.log("Seeding initial lead data...");
+      console.log("Firebase connected but collection is empty. Seeding initial lead data...");
+      
+      // Create a batch for faster writes
+      const batch = writeBatch(db);
       
       // Add each initial lead
       for (const lead of initialLeads) {
-        await addDoc(leadsRef, {
+        const newDocRef = doc(leadsRef);
+        batch.set(newDocRef, {
           ...lead,
           created_at: serverTimestamp()
         });
       }
       
-      console.log("Seeding complete!");
+      // Commit the batch
+      await batch.commit();
+      console.log("Initial data seeding to Firebase complete!");
+    } else {
+      console.log(`Firebase already contains ${querySnapshot.docs.length} leads. No seeding needed.`);
     }
+    
+    return;
   } catch (error) {
     console.error("Error seeding data to Firebase:", error);
     console.info("Initializing localStorage instead");
@@ -288,7 +334,18 @@ export async function seedInitialData(): Promise<void> {
   }
 }
 
-// Initialize localStorage on module import, but only in browser
-if (isBrowser) {
-  initLocalStorage();
+// Function to check Firebase connectivity
+export async function checkFirebaseConnectivity(): Promise<boolean> {
+  if (!isBrowser) return false;
+  
+  try {
+    console.log("Testing Firebase connectivity...");
+    const leadsRef = collection(db, 'leads');
+    await getDocs(leadsRef);
+    console.log("Firebase connection successful");
+    return true;
+  } catch (error) {
+    console.error("Firebase connectivity test failed:", error);
+    return false;
+  }
 } 

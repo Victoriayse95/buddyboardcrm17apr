@@ -1,7 +1,10 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -15,8 +18,30 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+let app;
+let db;
+let auth;
+
+// Only initialize Firebase if it hasn't been initialized yet
+// This prevents re-initialization during SSR
+if (!getApps().length) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    
+    if (isBrowser) {
+      console.log("Firebase initialized successfully");
+    }
+  } catch (error) {
+    if (isBrowser) {
+      console.error("Firebase initialization error:", error);
+    }
+  }
+} else {
+  app = getApps()[0];
+  db = getFirestore(app);
+  auth = getAuth(app);
+}
 
 export { app, db, auth }; 
