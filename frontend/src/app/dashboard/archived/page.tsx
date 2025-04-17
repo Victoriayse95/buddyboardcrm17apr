@@ -164,7 +164,7 @@ export default function ArchivedPage() {
       if (updatedLead) {
         // Update the leads state
         setLeads(leads.map(lead => 
-          lead.id === leadId ? updatedLead : lead
+          lead.id.toString() === leadId.toString() ? updatedLead : lead
         ));
         
         // Get the current date for comparison
@@ -173,7 +173,7 @@ export default function ArchivedPage() {
         
         // If lead status is no longer cancelled and not past end date, remove from archived
         if (newStatus !== "Cancelled" && endDate >= now) {
-          setArchivedLeads(archivedLeads.filter(lead => lead.id !== leadId));
+          setArchivedLeads(archivedLeads.filter(lead => lead.id.toString() !== leadId.toString()));
           
           // Redirect to upcoming if status changed to something active
           if (["Send Reminder", "Pending Service", "Service In Progress", "To Reschedule"].includes(newStatus)) {
@@ -184,7 +184,7 @@ export default function ArchivedPage() {
         } else {
           // Update in archivedLeads
           setArchivedLeads(archivedLeads.map(lead => 
-            lead.id === leadId ? updatedLead : lead
+            lead.id.toString() === leadId.toString() ? updatedLead : lead
           ));
         }
       }
@@ -198,7 +198,7 @@ export default function ArchivedPage() {
   const moveToUpcoming = async (leadId: string) => {
     try {
       // Find the lead in archived leads
-      const leadToMove = archivedLeads.find(lead => lead.id === leadId);
+      const leadToMove = archivedLeads.find(lead => lead.id.toString() === leadId.toString());
       
       if (leadToMove) {
         // Change status to Pending Service
@@ -206,10 +206,10 @@ export default function ArchivedPage() {
         
         if (updatedLead) {
           // Update leads state
-          setLeads(leads.map(lead => lead.id === leadId ? updatedLead : lead));
+          setLeads(leads.map(lead => lead.id.toString() === leadId.toString() ? updatedLead : lead));
           
           // Remove from archived leads
-          setArchivedLeads(archivedLeads.filter(lead => lead.id !== leadId));
+          setArchivedLeads(archivedLeads.filter(lead => lead.id.toString() !== leadId.toString()));
           
           // Redirect to upcoming page
           router.push('/dashboard');
@@ -229,13 +229,13 @@ export default function ArchivedPage() {
       if (updatedLead) {
         // Update the leads state
         setLeads(leads.map(lead => 
-          lead.id === leadId ? updatedLead : lead
+          lead.id.toString() === leadId.toString() ? updatedLead : lead
         ));
         
         // Update in archivedLeads if present
-        if (archivedLeads.some(lead => lead.id === leadId)) {
+        if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
           setArchivedLeads(archivedLeads.map(lead => 
-            lead.id === leadId ? updatedLead : lead
+            lead.id.toString() === leadId.toString() ? updatedLead : lead
           ));
         }
       }

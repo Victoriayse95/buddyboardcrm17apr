@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ClockIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { formatDate, formatDateDDMMYYYY } from '@/utils/format';
 import TableHeader from '@/components/TableHeader';
 import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
+import { exportDataToExcel } from '@/utils/exportUtils';
 
 interface CompletedService {
   id: number;
@@ -17,27 +18,35 @@ interface CompletedService {
   total_price: number;
   status: string;
   notes: string;
+  rating?: number;
+  feedback?: string;
+}
+
+interface CompletedServicesPageState {
+  services: CompletedService[];
+  loading: boolean;
+  error: string | null;
+  editingCell: { serviceId: string; field: string } | null;
+  sortField: string;
+  sortDirection: SortDirection;
+  activeFilters: ActiveFilters;
+  searchTerm: string;
+  displayedServices: CompletedService[];
 }
 
 export default function CompletedServicesPage() {
   const [services, setServices] = useState<CompletedService[]>([]);
+  const [displayedServices, setDisplayedServices] = useState<CompletedService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{serviceId: number, field: string} | null>(null);
-  const [sortField, setSortField] = useState<keyof CompletedService | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [editingCell, setEditingCell] = useState<{ serviceId: string; field: string } | null>(null);
+  const [sortField, setSortField] = useState<string>('completion_date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
-  const [displayedServices, setDisplayedServices] = useState<CompletedService[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Status options for dropdown
-  const statusOptions = [
-    "Send Reminder",
-    "Pending Service",
-    "Service In Progress",
-    "Cancelled",
-    "To Reschedule",
-    "Completed"
-  ];
+  const statusOptions = ['Paid', 'Pending Payment', 'Refunded', 'Cancelled'];
 
   // Generate filter options for different columns
   const getFilterOptions = (field: string): FilterOption[] => {
@@ -75,7 +84,7 @@ export default function CompletedServicesPage() {
 
   // Handle sorting changes
   const handleSort = (field: string, direction: SortDirection) => {
-    setSortField(field as keyof CompletedService);
+    setSortField(field);
     setSortDirection(direction);
   };
 
@@ -89,20 +98,63 @@ export default function CompletedServicesPage() {
 
   // Apply sorting and filtering when relevant states change
   useEffect(() => {
-    let filtered = services;
-    
-    // Apply filters
-    if (Object.keys(activeFilters).length > 0) {
-      filtered = applyFilters(filtered, activeFilters);
+    // Apply filtering, sorting and searching to the services
+    let filtered = [...services];
+
+    // Apply search term filtering
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(service => 
+        service.customer_name.toLowerCase().includes(term) ||
+        service.customer_contact.toLowerCase().includes(term) ||
+        service.service_provider_name.toLowerCase().includes(term) ||
+        service.service_type.toLowerCase().includes(term) ||
+        (service.notes && service.notes.toLowerCase().includes(term))
+      );
     }
-    
+
+    // Apply active filters
+    Object.entries(activeFilters).forEach(([field, values]) => {
+      if (values.length) {
+        if (field === 'completion_date_month') {
+          filtered = filtered.filter(service => {
+            const date = new Date(service.completion_date);
+            const month = date.toLocaleString('default', { month: 'long' });
+            return values.includes(month);
+          });
+        } else {
+          filtered = filtered.filter(service => values.includes(String(service[field as keyof CompletedService])));
+        }
+      }
+    });
+
     // Apply sorting
-    if (sortField) {
-      filtered = sortItems(filtered, sortField, sortDirection);
-    }
-    
+    filtered.sort((a, b) => {
+      const fieldA = a[sortField as keyof CompletedService];
+      const fieldB = b[sortField as keyof CompletedService];
+      
+      if (typeof fieldA === 'string' && typeof fieldB === 'string') {
+        return sortDirection === 'asc' 
+          ? fieldA.localeCompare(fieldB) 
+          : fieldB.localeCompare(fieldA);
+      }
+      
+      if (typeof fieldA === 'number' && typeof fieldB === 'number') {
+        return sortDirection === 'asc' ? fieldA - fieldB : fieldB - fieldA;
+      }
+      
+      // Handle dates
+      if (sortField === 'completion_date') {
+        const dateA = new Date(a.completion_date).getTime();
+        const dateB = new Date(b.completion_date).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      
+      return 0;
+    });
+
     setDisplayedServices(filtered);
-  }, [services, sortField, sortDirection, activeFilters]);
+  }, [services, activeFilters, sortField, sortDirection, searchTerm]);
 
   useEffect(() => {
     async function fetchCompletedServices() {
@@ -123,7 +175,9 @@ export default function CompletedServicesPage() {
             completion_date: '2023-07-15T10:30:00',
             total_price: 120,
             status: 'Completed',
-            notes: 'Customer was very satisfied with the service.'
+            notes: 'Customer was very satisfied with the service.',
+            rating: 5,
+            feedback: 'Excellent service!'
           },
           {
             id: 2,
@@ -134,7 +188,9 @@ export default function CompletedServicesPage() {
             completion_date: '2023-07-14T15:45:00',
             total_price: 200,
             status: 'Completed',
-            notes: 'Fixed leak under the sink, additional parts were required.'
+            notes: 'Fixed leak under the sink, additional parts were required.',
+            rating: 4,
+            feedback: 'Good job, but the price was a bit high.'
           },
           {
             id: 3,
@@ -145,7 +201,9 @@ export default function CompletedServicesPage() {
             completion_date: '2023-07-13T09:00:00',
             total_price: 80,
             status: 'Completed',
-            notes: 'Regular bi-weekly service, front and back yard.'
+            notes: 'Regular bi-weekly service, front and back yard.',
+            rating: 5,
+            feedback: 'Always on time and does a great job!'
           },
           {
             id: 4,
@@ -156,7 +214,9 @@ export default function CompletedServicesPage() {
             completion_date: '2023-07-12T13:20:00',
             total_price: 250,
             status: 'Completed',
-            notes: 'Installed new light fixtures in kitchen and bathroom.'
+            notes: 'Installed new light fixtures in kitchen and bathroom.',
+            rating: 5,
+            feedback: 'Very professional and efficient!'
           },
           {
             id: 5,
@@ -167,7 +227,9 @@ export default function CompletedServicesPage() {
             completion_date: '2023-07-10T11:15:00',
             total_price: 150,
             status: 'Completed',
-            notes: 'Deep cleaning for all bedrooms, customer requested stain removal.'
+            notes: 'Deep cleaning for all bedrooms, customer requested stain removal.',
+            rating: 4,
+            feedback: 'Good service, but the carpet still looks a bit dirty.'
           }
         ];
         
@@ -185,36 +247,78 @@ export default function CompletedServicesPage() {
     fetchCompletedServices();
   }, []);
 
-  const handleCellEdit = (serviceId: number, field: string, value: string | number) => {
-    // Update the service in local state
-    const updatedServices = services.map(service => 
-      service.id === serviceId ? { ...service, [field]: value } : service
-    );
-    
-    setServices(updatedServices);
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated service ${serviceId}, field ${field} to ${value}`);
+  const handleCellEdit = async (serviceId: string, field: string, value: string | number) => {
+    try {
+      // Find the service in the services state
+      const updatedServices = services.map(service => {
+        if (service.id.toString() === serviceId.toString()) {
+          return { ...service, [field]: value };
+        }
+        return service;
+      });
+      
+      // Update the services state
+      setServices(updatedServices);
+      
+      // Update the displayedServices state
+      setDisplayedServices(updatedServices);
+      
+      // Update the service in Firestore
+      // This would be implemented when backend is connected
+    } catch (error) {
+      console.error(`Error updating service ${serviceId}, field ${field}:`, error);
+      alert('Failed to update service. Please try again.');
+    }
     
     // Close the editing cell
     setEditingCell(null);
   };
 
-  const handleStatusChange = async (serviceId: number, newStatus: string) => {
+  const handleStatusChange = async (serviceId: string, newStatus: string) => {
     try {
-      // Update in local state only for now
-      const updatedServices = services.map(service => 
-        service.id === serviceId ? { ...service, status: newStatus } : service
-      );
+      // Find the service in the services state
+      const updatedServices = services.map(service => {
+        if (service.id.toString() === serviceId.toString()) {
+          return { ...service, status: newStatus };
+        }
+        return service;
+      });
       
+      // Update the services state
       setServices(updatedServices);
       
-      // In a real app, you would make an API call
-      // await api.patch(`/services/${serviceId}/`, { status: newStatus });
+      // Update the displayedServices state
+      setDisplayedServices(updatedServices);
+      
+      // Update the service in Firestore
+      // This would be implemented when backend is connected
     } catch (error) {
       console.error('Error updating service status:', error);
-      toast.error('Failed to update service status. Please try again.');
+      alert('Failed to update service status. Please try again.');
     }
+  };
+
+  // Handle exporting services to Excel
+  const handleExport = () => {
+    if (displayedServices.length === 0) {
+      toast.error('No services to export');
+      return;
+    }
+
+    const dataToExport = displayedServices.map(service => ({
+      'Customer Name': service.customer_name,
+      'Service Type': service.service_type,
+      'Completion Date': formatDateDDMMYYYY(service.completion_date),
+      'Total Price': `$${service.total_price}`,
+      'Technician': service.service_provider_name,
+      'Rating': service.rating ? service.rating.toString() : 'N/A',
+      'Feedback': service.feedback || 'None',
+      'Status': service.status,
+      'Notes': service.notes
+    }));
+
+    exportDataToExcel(dataToExport, 'completed-services', 'Completed Services');
+    toast.success('Services exported successfully');
   };
 
   if (loading) {
@@ -243,10 +347,36 @@ export default function CompletedServicesPage() {
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-xl font-semibold text-gray-900">Completed Services</h1>
+          <h1 className="text-base font-semibold leading-6 text-gray-900">Completed Services</h1>
           <p className="mt-2 text-sm text-gray-700">
-            A list of all completed services including customer information, service details, and status.
+            A list of all completed services with customer details, service date, and payment status.
           </p>
+        </div>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Export to Excel
+          </button>
+        </div>
+      </div>
+      
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="relative rounded-md shadow-sm">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search services..."
+              className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            />
+          </div>
         </div>
         {Object.keys(activeFilters).length > 0 && (
           <button
@@ -341,88 +471,88 @@ export default function CompletedServicesPage() {
                     displayedServices.map((service) => (
                       <tr key={service.id}>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'customer_name' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <input 
                               className="w-full p-1 border rounded" 
                               defaultValue={service.customer_name}
-                              onBlur={(e) => handleCellEdit(service.id, 'customer_name', e.target.value)}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'customer_name', e.target.value)}
                               autoFocus
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'customer_name'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'customer_name'})}
                             >
                               {service.customer_name}
                             </div>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'customer_contact' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <input 
                               className="w-full p-1 border rounded" 
                               defaultValue={service.customer_contact}
-                              onBlur={(e) => handleCellEdit(service.id, 'customer_contact', e.target.value)}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'customer_contact', e.target.value)}
                               autoFocus
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'customer_contact'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'customer_contact'})}
                             >
                               {service.customer_contact}
                             </div>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'service_provider_name' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <input 
                               className="w-full p-1 border rounded" 
                               defaultValue={service.service_provider_name}
-                              onBlur={(e) => handleCellEdit(service.id, 'service_provider_name', e.target.value)}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'service_provider_name', e.target.value)}
                               autoFocus
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'service_provider_name'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'service_provider_name'})}
                             >
                               {service.service_provider_name}
                             </div>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'completion_date' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <input 
                               type="date"
                               className="w-full p-1 border rounded" 
                               defaultValue={service.completion_date.split('T')[0]}
-                              onBlur={(e) => handleCellEdit(service.id, 'completion_date', e.target.value)}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'completion_date', e.target.value)}
                               autoFocus
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'completion_date'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'completion_date'})}
                             >
                               {formatDateDDMMYYYY(service.completion_date)}
                             </div>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'total_price' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <input 
                               type="number"
                               step="0.01"
                               className="w-full p-1 border rounded" 
                               defaultValue={service.total_price}
-                              onBlur={(e) => handleCellEdit(service.id, 'total_price', parseFloat(e.target.value))}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'total_price', parseFloat(e.target.value))}
                               autoFocus
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'total_price'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'total_price'})}
                             >
                               ${service.total_price}
                             </div>
@@ -431,7 +561,7 @@ export default function CompletedServicesPage() {
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           <select
                             value={service.status}
-                            onChange={(e) => handleStatusChange(service.id, e.target.value)}
+                            onChange={(e) => handleStatusChange(service.id.toString(), e.target.value)}
                             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                           >
                             {statusOptions.map(option => (
@@ -440,18 +570,18 @@ export default function CompletedServicesPage() {
                           </select>
                         </td>
                         <td className="px-3 py-4 text-sm text-gray-500">
-                          {editingCell?.serviceId === service.id && editingCell?.field === 'notes' ? (
+                          {editingCell?.serviceId === service.id.toString() ? (
                             <textarea 
                               className="w-full p-1 border rounded" 
                               defaultValue={service.notes || ''}
-                              onBlur={(e) => handleCellEdit(service.id, 'notes', e.target.value)}
+                              onBlur={(e) => handleCellEdit(service.id.toString(), 'notes', e.target.value)}
                               autoFocus
                               rows={3}
                             />
                           ) : (
                             <div 
                               className="cursor-pointer hover:bg-gray-100 p-1 rounded min-w-40 max-w-60 break-words" 
-                              onClick={() => setEditingCell({serviceId: service.id, field: 'notes'})}
+                              onClick={() => setEditingCell({serviceId: service.id.toString(), field: 'notes'})}
                             >
                               {service.notes || <span className="text-gray-400">No notes</span>}
                             </div>

@@ -333,95 +333,58 @@ export default function HomePage() {
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      // Update the lead in localStorage
-      const updatedLead = await updateLead(leadId, { status: newStatus });
+      // Find the lead in the leads state
+      const leadToUpdate = leads.find(lead => lead.id.toString() === leadId.toString());
       
-      if (updatedLead) {
-        // Update the leads state
-        setLeads(prevLeads => prevLeads.map(lead => 
-          lead.id === leadId ? updatedLead : lead
-        ));
-        
-        // Get the target date for 3 days from now
-        const targetDate = getThreeDayTargetDate();
-        
-        // Compare the date strings
-        const matchesDate = updatedLead.service_start_date === targetDate;
-        
-        // Also check day differences
-        const leadDate = new Date(updatedLead.service_start_date);
-        leadDate.setHours(0, 0, 0, 0);
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Calculate difference in days
-        const diffTime = leadDate.getTime() - today.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Check if the difference is 3 days
-        const isThreeDaysAway = diffDays === 3;
-        
-        // Check if this lead should be in contactLeads
-        const isExactlyThreeDays = matchesDate || isThreeDaysAway;
-        
-        console.log(`Date changed for lead ${leadId}: ${updatedLead.service_start_date}, matches 3-day target: ${isExactlyThreeDays}, days difference: ${diffDays}`);
-        
-        // Update contactLeads
-        if (isExactlyThreeDays && 
-            updatedLead.status !== "Completed" && 
-            updatedLead.status !== "Cancelled") {
-          // If the lead isn't already in contactLeads, add it
-          if (!contactLeads.some(lead => lead.id === leadId)) {
-            const newContactLeads = [...contactLeads, updatedLead];
-            setContactLeads(newContactLeads);
-            
-            // Update filtered leads
-            if (searchTerm.trim() === '') {
-              setFilteredContactLeads(newContactLeads);
-            } else {
-              const lowerCaseSearch = searchTerm.toLowerCase();
-              setFilteredContactLeads(newContactLeads.filter(lead => 
-                lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-                lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-              ));
-            }
-          } else {
-            // Update the lead in contactLeads if it's already there
-            const updatedContactLeads = contactLeads.map(lead => 
-              lead.id === leadId ? updatedLead : lead
-            );
-            setContactLeads(updatedContactLeads);
-            
-            // Update filtered leads with same filter
-            if (searchTerm.trim() === '') {
-              setFilteredContactLeads(updatedContactLeads);
-            } else {
-              const lowerCaseSearch = searchTerm.toLowerCase();
-              setFilteredContactLeads(updatedContactLeads.filter(lead => 
-                lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-                lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-              ));
-            }
-          }
-        } else {
-          // If the date doesn't match the 3-day threshold or status is completed/cancelled,
-          // remove it from contactLeads if it's there
-          const filteredContactLeadsData = contactLeads.filter(lead => lead.id !== leadId);
-          setContactLeads(filteredContactLeadsData);
-          
-          // Update filtered leads
-          if (searchTerm.trim() === '') {
-            setFilteredContactLeads(filteredContactLeadsData);
-          } else {
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            setFilteredContactLeads(filteredContactLeadsData.filter(lead => 
-              lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-              lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-            ));
-          }
-        }
+      if (!leadToUpdate) {
+        console.error(`Lead with ID ${leadId} not found`);
+        throw new Error('Lead not found');
       }
+      
+      // Update the lead in state
+      const updatedLeads = leads.map(lead => {
+        if (lead.id.toString() === leadId.toString()) {
+          return { ...lead, status: newStatus };
+        }
+        return lead;
+      });
+      
+      // Update the leads state
+      setLeads(updatedLeads);
+      
+      // Update the lead in the appropriate category
+      if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedContactLeads = contactLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, status: newStatus };
+          }
+          return lead;
+        });
+        setContactLeads(updatedContactLeads);
+      }
+      
+      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedUpcomingLeads = upcomingLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, status: newStatus };
+          }
+          return lead;
+        });
+        setUpcomingLeads(updatedUpcomingLeads);
+      }
+      
+      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedArchivedLeads = archivedLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, status: newStatus };
+          }
+          return lead;
+        });
+        setArchivedLeads(updatedArchivedLeads);
+      }
+      
+      // Update local storage
+      updateLead({ ...leadToUpdate, status: newStatus });
     } catch (error) {
       console.error('Error updating lead status:', error);
       alert('Failed to update lead status. Please try again.');
@@ -430,138 +393,95 @@ export default function HomePage() {
   
   const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
     try {
-      // Update the lead in localStorage
-      const updatedLead = await updateLead(leadId, { [field]: value });
+      // Find the lead in the leads state
+      const leadToUpdate = leads.find(lead => lead.id.toString() === leadId.toString());
       
-      if (updatedLead) {
-        // Update the leads state
-        setLeads(prevLeads => prevLeads.map(lead => 
-          lead.id === leadId ? updatedLead : lead
-        ));
-        
-        // Update in contactLeads if present
-        if (contactLeads.some(lead => lead.id === leadId)) {
-          const updatedContactLeads = contactLeads.map(lead => 
-            lead.id === leadId ? updatedLead : lead
-          );
-          setContactLeads(updatedContactLeads);
-          
-          // Also update filteredContactLeads with the same filter
-          if (searchTerm.trim() === '') {
-            setFilteredContactLeads(updatedContactLeads);
-          } else {
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            setFilteredContactLeads(updatedContactLeads.filter(lead => 
-              lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-              lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-            ));
-          }
-        }
-        
-        // If date fields were changed, we need to potentially move the lead between tables
-        if (field === 'service_start_date') {
-          // Get the target date for 3 days from now
-          const targetDate = getThreeDayTargetDate();
-          
-          // Compare the date strings
-          const matchesDate = updatedLead.service_start_date === targetDate;
-          
-          // Also check day differences
-          const leadDate = new Date(updatedLead.service_start_date);
-          leadDate.setHours(0, 0, 0, 0);
-          
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          
-          // Calculate difference in days
-          const diffTime = leadDate.getTime() - today.getTime();
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-          
-          // Check if the difference is 3 days
-          const isThreeDaysAway = diffDays === 3;
-          
-          // Check if this lead should be in contactLeads
-          const isExactlyThreeDays = matchesDate || isThreeDaysAway;
-          
-          console.log(`Date changed for lead ${leadId}: ${updatedLead.service_start_date}, matches 3-day target: ${isExactlyThreeDays}, days difference: ${diffDays}`);
-          
-          // Update contactLeads
-          if (isExactlyThreeDays && 
-              updatedLead.status !== "Completed" && 
-              updatedLead.status !== "Cancelled") {
-            // If the lead isn't already in contactLeads, add it
-            if (!contactLeads.some(lead => lead.id === leadId)) {
-              const newContactLeads = [...contactLeads, updatedLead];
-              setContactLeads(newContactLeads);
-              
-              // Update filtered leads
-              if (searchTerm.trim() === '') {
-                setFilteredContactLeads(newContactLeads);
-              } else {
-                const lowerCaseSearch = searchTerm.toLowerCase();
-                setFilteredContactLeads(newContactLeads.filter(lead => 
-                  lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-                  lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-                ));
-              }
-            }
-          } else {
-            // If the date doesn't match the 3-day threshold or status is completed/cancelled,
-            // remove it from contactLeads if it's there
-            const filteredContactLeadsData = contactLeads.filter(lead => lead.id !== leadId);
-            setContactLeads(filteredContactLeadsData);
-            
-            // Update filtered leads
-            if (searchTerm.trim() === '') {
-              setFilteredContactLeads(filteredContactLeadsData);
-            } else {
-              const lowerCaseSearch = searchTerm.toLowerCase();
-              setFilteredContactLeads(filteredContactLeadsData.filter(lead => 
-                lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-                lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-              ));
-            }
-          }
-        }
+      if (!leadToUpdate) {
+        console.error(`Lead with ID ${leadId} not found`);
+        throw new Error('Lead not found');
       }
       
-      // In a real app, you would make an API call to update the backend
-      console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
+      // Update the lead in state
+      const updatedLeads = leads.map(lead => {
+        if (lead.id.toString() === leadId.toString()) {
+          return { ...lead, [field]: value };
+        }
+        return lead;
+      });
       
-      // Close the editing cell
-      setEditingCell(null);
+      // Update the leads state
+      setLeads(updatedLeads);
+      
+      // Update the lead in the appropriate category
+      if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedContactLeads = contactLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, [field]: value };
+          }
+          return lead;
+        });
+        setContactLeads(updatedContactLeads);
+      }
+      
+      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedUpcomingLeads = upcomingLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, [field]: value };
+          }
+          return lead;
+        });
+        setUpcomingLeads(updatedUpcomingLeads);
+      }
+      
+      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const updatedArchivedLeads = archivedLeads.map(lead => {
+          if (lead.id.toString() === leadId.toString()) {
+            return { ...lead, [field]: value };
+          }
+          return lead;
+        });
+        setArchivedLeads(updatedArchivedLeads);
+      }
+      
+      // Update local storage
+      updateLead({ ...leadToUpdate, [field]: value });
     } catch (error) {
-      console.error(`Error updating lead ${leadId}:`, error);
+      console.error(`Error updating lead ${leadId}, field ${field}:`, error);
       alert('Failed to update lead. Please try again.');
-      setEditingCell(null);
     }
   };
 
-  const handleDeleteLead = async (id: string) => {
-    // Confirm deletion with the user
-    if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-      return;
-    }
-    
+  const handleDeleteLead = async (leadId: string) => {
     try {
-      setLoading(true);
-      const success = await deleteLead(id);
+      // Remove the lead from state
+      const filteredLeads = leads.filter(lead => lead.id.toString() !== leadId.toString());
+      setLeads(filteredLeads);
       
-      if (success) {
-        // Remove from leads and filtered leads
-        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
-        setContactLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
-        setFilteredContactLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
-        
-        toast.success('Lead deleted successfully');
-      } else {
-        toast.error('Failed to delete lead');
+      // Remove the lead from the appropriate category
+      if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const filteredContactLeads = contactLeads.filter(lead => lead.id.toString() !== leadId.toString());
+        setContactLeads(filteredContactLeads);
       }
+      
+      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const filteredUpcomingLeads = upcomingLeads.filter(lead => lead.id.toString() !== leadId.toString());
+        setUpcomingLeads(filteredUpcomingLeads);
+      }
+      
+      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
+        const filteredArchivedLeads = archivedLeads.filter(lead => lead.id.toString() !== leadId.toString());
+        setArchivedLeads(filteredArchivedLeads);
+      }
+      
+      // Remove the lead from local storage
+      deleteLead(leadId.toString());
+      
+      // Close the confirmation dialog
+      setShowDeleteConfirmation(false);
+      setLeadToDelete(null);
     } catch (error) {
       console.error('Error deleting lead:', error);
-      toast.error('An error occurred while deleting the lead');
-    } finally {
-      setLoading(false);
+      alert('Failed to delete lead. Please try again.');
     }
   };
 
