@@ -971,9 +971,9 @@ export default function HomePage() {
           <div className="mt-4 overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
             <div className="bg-white">
               {/* Days of week header */}
-              <div className="grid grid-cols-7 border-b">
+              <div className="grid grid-cols-7 border-b border-gray-300">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="px-4 py-2 text-center font-semibold text-gray-900 border-r last:border-r-0">
+                  <div key={day} className="px-4 py-2 text-center font-semibold text-gray-900 border-r border-gray-300 last:border-r-0">
                     {day}
                   </div>
                 ))}
@@ -986,7 +986,7 @@ export default function HomePage() {
                     return (
                       <div 
                         key={`empty-${index}`} 
-                        className="border-r border-b last:border-r-0 bg-gray-50 h-24"
+                        className="border-r border-b border-gray-300 last:border-r-0 bg-gray-50 h-24"
                       />
                     );
                   }
@@ -998,7 +998,7 @@ export default function HomePage() {
                   return (
                     <div 
                       key={dateKey} 
-                      className={`border-r border-b last:border-r-0 h-24 p-1 overflow-y-auto ${
+                      className={`border-r border-b border-gray-300 last:border-r-0 h-24 p-1 overflow-y-auto ${
                         isToday ? 'bg-indigo-50' : ''
                       }`}
                     >
