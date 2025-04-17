@@ -14,7 +14,7 @@ export default function HomePage() {
   const [contactLeads, setContactLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{leadId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,7 +74,7 @@ export default function HomePage() {
         const targetDate = threeDaysFromNow.toISOString().split('T')[0];
         
         // Fetch leads from localStorage
-        const allLeads = getLeads();
+        const allLeads = await getLeads();
         
         // Leads to contact - exactly 3 days from now
         const leadsToContact = allLeads.filter(lead => 
@@ -179,14 +179,14 @@ export default function HomePage() {
     return date.toISOString().split('T')[0];
   };
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
       // Update the lead in localStorage
-      const updatedLead = updateLead(leadId, { status: newStatus });
+      const updatedLead = await updateLead(leadId, { status: newStatus });
       
       if (updatedLead) {
         // Update the leads state
-        setLeads(leads.map(lead => 
+        setLeads(prevLeads => prevLeads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         ));
         
@@ -257,86 +257,92 @@ export default function HomePage() {
     }
   };
   
-  const handleCellEdit = (leadId: number, field: string, value: string | number) => {
-    // Update the lead in localStorage
-    const updatedLead = updateLead(leadId, { [field]: value });
-    
-    if (updatedLead) {
-      // Update the leads state
-      setLeads(leads.map(lead => 
-        lead.id === leadId ? updatedLead : lead
-      ));
+  const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
+    try {
+      // Update the lead in localStorage
+      const updatedLead = await updateLead(leadId, { [field]: value });
       
-      // Update in contactLeads if present
-      if (contactLeads.some(lead => lead.id === leadId)) {
-        const updatedContactLeads = contactLeads.map(lead => 
+      if (updatedLead) {
+        // Update the leads state
+        setLeads(prevLeads => prevLeads.map(lead => 
           lead.id === leadId ? updatedLead : lead
-        );
-        setContactLeads(updatedContactLeads);
+        ));
         
-        // Also update filteredContactLeads with the same filter
-        if (searchTerm.trim() === '') {
-          setFilteredContactLeads(updatedContactLeads);
-        } else {
-          const lowerCaseSearch = searchTerm.toLowerCase();
-          setFilteredContactLeads(updatedContactLeads.filter(lead => 
-            lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-            lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-          ));
-        }
-      }
-      
-      // If date fields were changed, we need to potentially move the lead between tables
-      if (field === 'service_start_date') {
-        // Calculate 3 days from now date
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const threeDaysFromNow = new Date(today);
-        threeDaysFromNow.setDate(today.getDate() + 3);
-        const targetDate = threeDaysFromNow.toISOString().split('T')[0];
-        
-        // Update contactLeads
-        if (updatedLead.service_start_date === targetDate && 
-            updatedLead.status !== "Completed" && 
-            updatedLead.status !== "Cancelled") {
-          if (!contactLeads.some(lead => lead.id === leadId)) {
-            const newContactLeads = [...contactLeads, updatedLead];
-            setContactLeads(newContactLeads);
-            
-            // Update filtered leads
-            if (searchTerm.trim() === '') {
-              setFilteredContactLeads(newContactLeads);
-            } else {
-              const lowerCaseSearch = searchTerm.toLowerCase();
-              setFilteredContactLeads(newContactLeads.filter(lead => 
-                lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-                lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
-              ));
-            }
-          }
-        } else {
-          const filteredContactLeadsData = contactLeads.filter(lead => lead.id !== leadId);
-          setContactLeads(filteredContactLeadsData);
+        // Update in contactLeads if present
+        if (contactLeads.some(lead => lead.id === leadId)) {
+          const updatedContactLeads = contactLeads.map(lead => 
+            lead.id === leadId ? updatedLead : lead
+          );
+          setContactLeads(updatedContactLeads);
           
-          // Update filtered leads
+          // Also update filteredContactLeads with the same filter
           if (searchTerm.trim() === '') {
-            setFilteredContactLeads(filteredContactLeadsData);
+            setFilteredContactLeads(updatedContactLeads);
           } else {
             const lowerCaseSearch = searchTerm.toLowerCase();
-            setFilteredContactLeads(filteredContactLeadsData.filter(lead => 
+            setFilteredContactLeads(updatedContactLeads.filter(lead => 
               lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
               lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
             ));
           }
         }
+        
+        // If date fields were changed, we need to potentially move the lead between tables
+        if (field === 'service_start_date') {
+          // Calculate 3 days from now date
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const threeDaysFromNow = new Date(today);
+          threeDaysFromNow.setDate(today.getDate() + 3);
+          const targetDate = threeDaysFromNow.toISOString().split('T')[0];
+          
+          // Update contactLeads
+          if (updatedLead.service_start_date === targetDate && 
+              updatedLead.status !== "Completed" && 
+              updatedLead.status !== "Cancelled") {
+            if (!contactLeads.some(lead => lead.id === leadId)) {
+              const newContactLeads = [...contactLeads, updatedLead];
+              setContactLeads(newContactLeads);
+              
+              // Update filtered leads
+              if (searchTerm.trim() === '') {
+                setFilteredContactLeads(newContactLeads);
+              } else {
+                const lowerCaseSearch = searchTerm.toLowerCase();
+                setFilteredContactLeads(newContactLeads.filter(lead => 
+                  lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
+                  lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
+                ));
+              }
+            }
+          } else {
+            const filteredContactLeadsData = contactLeads.filter(lead => lead.id !== leadId);
+            setContactLeads(filteredContactLeadsData);
+            
+            // Update filtered leads
+            if (searchTerm.trim() === '') {
+              setFilteredContactLeads(filteredContactLeadsData);
+            } else {
+              const lowerCaseSearch = searchTerm.toLowerCase();
+              setFilteredContactLeads(filteredContactLeadsData.filter(lead => 
+                lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
+                lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
+              ));
+            }
+          }
+        }
       }
+      
+      // In a real app, you would make an API call to update the backend
+      console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
+      
+      // Close the editing cell
+      setEditingCell(null);
+    } catch (error) {
+      console.error(`Error updating lead ${leadId}:`, error);
+      alert('Failed to update lead. Please try again.');
+      setEditingCell(null);
     }
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
-    
-    // Close the editing cell
-    setEditingCell(null);
   };
 
   const renderLeadRow = (lead: Lead) => (

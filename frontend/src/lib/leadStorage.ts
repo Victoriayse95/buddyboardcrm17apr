@@ -100,6 +100,34 @@ const initialLeads: Omit<Lead, 'id'>[] = [
   }
 ];
 
+// LocalStorage helper functions
+const LOCAL_STORAGE_KEY = 'buddyboard_leads';
+
+// Initialize local storage with mock data if empty
+function initLocalStorage(): void {
+  const leadsFromStorage = localStorage.getItem(LOCAL_STORAGE_KEY);
+  
+  if (!leadsFromStorage) {
+    const leadsWithIds = initialLeads.map((lead, index) => ({
+      ...lead,
+      id: `local-${index + 1}`
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leadsWithIds));
+  }
+}
+
+// Get leads from local storage
+function getLeadsFromLocalStorage(): Lead[] {
+  initLocalStorage();
+  const leadsFromStorage = localStorage.getItem(LOCAL_STORAGE_KEY);
+  return leadsFromStorage ? JSON.parse(leadsFromStorage) : [];
+}
+
+// Save leads to local storage
+function saveLeadsToLocalStorage(leads: Lead[]): void {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leads));
+}
+
 // Function to get all leads
 export async function getLeads(): Promise<Lead[]> {
   try {
@@ -107,8 +135,8 @@ export async function getLeads(): Promise<Lead[]> {
     const querySnapshot = await getDocs(leadsRef);
     
     if (querySnapshot.empty) {
-      // If no leads in Firestore, we could seed them, but we'll return empty array for now
-      return [];
+      // If no leads in Firestore, fall back to local storage
+      return getLeadsFromLocalStorage();
     }
     
     return querySnapshot.docs.map(doc => {
@@ -120,8 +148,9 @@ export async function getLeads(): Promise<Lead[]> {
       } as Lead;
     });
   } catch (error) {
-    console.error("Error getting leads:", error);
-    return [];
+    console.error("Error getting leads from Firebase:", error);
+    console.info("Falling back to localStorage");
+    return getLeadsFromLocalStorage();
   }
 }
 
@@ -146,8 +175,22 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
       created_at: new Date().toISOString()
     };
   } catch (error) {
-    console.error("Error adding lead:", error);
-    return null;
+    console.error("Error adding lead to Firebase:", error);
+    console.info("Falling back to localStorage");
+    
+    // Add to local storage
+    const leads = getLeadsFromLocalStorage();
+    const newLead = {
+      ...lead,
+      id: `local-${Date.now()}`,
+      status: 'Pending Service',
+      created_at: new Date().toISOString()
+    };
+    
+    leads.push(newLead);
+    saveLeadsToLocalStorage(leads);
+    
+    return newLead;
   }
 }
 
@@ -166,7 +209,20 @@ export async function updateLead(id: string, updates: Partial<Lead>): Promise<Le
     const updatedLeads = await getLeads();
     return updatedLeads.find(lead => lead.id === id) || null;
   } catch (error) {
-    console.error("Error updating lead:", error);
+    console.error("Error updating lead in Firebase:", error);
+    console.info("Falling back to localStorage");
+    
+    // Update in local storage
+    const leads = getLeadsFromLocalStorage();
+    const leadIndex = leads.findIndex(lead => lead.id === id);
+    
+    if (leadIndex >= 0) {
+      const updatedLead = { ...leads[leadIndex], ...updates };
+      leads[leadIndex] = updatedLead;
+      saveLeadsToLocalStorage(leads);
+      return updatedLead;
+    }
+    
     return null;
   }
 }
@@ -178,7 +234,18 @@ export async function deleteLead(id: string): Promise<boolean> {
     await deleteDoc(leadRef);
     return true;
   } catch (error) {
-    console.error("Error deleting lead:", error);
+    console.error("Error deleting lead from Firebase:", error);
+    console.info("Falling back to localStorage");
+    
+    // Delete from local storage
+    const leads = getLeadsFromLocalStorage();
+    const filteredLeads = leads.filter(lead => lead.id !== id);
+    
+    if (filteredLeads.length < leads.length) {
+      saveLeadsToLocalStorage(filteredLeads);
+      return true;
+    }
+    
     return false;
   }
 }
@@ -204,6 +271,11 @@ export async function seedInitialData(): Promise<void> {
       console.log("Seeding complete!");
     }
   } catch (error) {
-    console.error("Error seeding data:", error);
+    console.error("Error seeding data to Firebase:", error);
+    console.info("Initializing localStorage instead");
+    initLocalStorage();
   }
-} 
+}
+
+// Initialize localStorage on module import
+initLocalStorage(); 
