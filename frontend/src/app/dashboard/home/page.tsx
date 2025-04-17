@@ -7,6 +7,7 @@ import { getLeads, updateLead, deleteLead, Lead } from '@/lib/leadStorage';
 import { PencilIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
+import { formatDateDDMMYYYY } from '@/utils/format';
 
 export default function HomePage() {
   const router = useRouter();
@@ -536,7 +537,7 @@ export default function HomePage() {
             className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
             onClick={() => setEditingCell({leadId: lead.id, field: 'service_start_date'})}
           >
-            <span className="flex-1 min-w-0 break-words">{new Date(lead.service_start_date).toLocaleDateString()}</span>
+            <span className="flex-1 min-w-0 break-words">{formatDateDDMMYYYY(lead.service_start_date)}</span>
             <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
           </div>
         )}
@@ -739,7 +740,13 @@ export default function HomePage() {
                     ) : (
                       <tr>
                         <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
-                          No leads to contact found for 3 days from now
+                          No leads to contact found for {(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const threeDaysFromNow = new Date(today);
+                            threeDaysFromNow.setDate(today.getDate() + 3);
+                            return formatDateDDMMYYYY(threeDaysFromNow.toISOString());
+                          })()}
                         </td>
                       </tr>
                     )}

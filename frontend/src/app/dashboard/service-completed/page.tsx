@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { formatDate } from '@/utils/format';
+import { formatDate, formatDateDDMMYYYY } from '@/utils/format';
 
 interface CompletedService {
   id: number;
@@ -275,7 +275,7 @@ export default function CompletedServicesPage() {
                             className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
                             onClick={() => setEditingCell({serviceId: service.id, field: 'completion_date'})}
                           >
-                            {new Date(service.completion_date).toLocaleDateString()}
+                            {formatDateDDMMYYYY(service.completion_date)}
                           </div>
                         )}
                       </td>

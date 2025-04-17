@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
 import { toast } from 'react-hot-toast';
+import { formatDateDDMMYYYY } from '@/utils/format';
 
 export default function AllLeadsPage() {
   const router = useRouter();
@@ -317,7 +318,7 @@ export default function AllLeadsPage() {
                                 className="cursor-pointer hover:bg-gray-100 p-1 rounded" 
                                 onClick={() => setEditingCell({leadId: lead.id, field: 'service_start_date'})}
                               >
-                                {new Date(lead.service_start_date).toLocaleDateString()}
+                                {formatDateDDMMYYYY(lead.service_start_date)}
                               </div>
                             )}
                           </td>

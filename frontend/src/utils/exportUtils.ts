@@ -2,11 +2,16 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Lead } from '@/lib/leadStorage';
 
-// Format date strings in a readable format
+// Format date strings in a readable format (DD/MM/YYYY)
 const formatDate = (dateString: string): string => {
   if (!dateString) return '';
   try {
-    return new Date(dateString).toLocaleDateString();
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   } catch (e) {
     return dateString;
   }
