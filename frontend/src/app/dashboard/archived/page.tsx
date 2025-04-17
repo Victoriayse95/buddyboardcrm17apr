@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
-import { PencilIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
@@ -25,6 +25,7 @@ export default function ArchivedPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [displayedLeads, setDisplayedLeads] = useState<Lead[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Status options for dropdown
   const statusOptions = [
@@ -92,9 +93,20 @@ export default function ArchivedPage() {
     }));
   };
 
-  // Apply sorting and filtering when relevant states change
+  // Apply sorting, filtering, and searching when relevant states change
   useEffect(() => {
     let filtered = archivedLeads;
+    
+    // Apply search term filter first
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(lead => 
+        lead.customer_name.toLowerCase().includes(term) ||
+        lead.customer_contact.toLowerCase().includes(term) ||
+        lead.service_provider_name.toLowerCase().includes(term) ||
+        (lead.notes && lead.notes.toLowerCase().includes(term))
+      );
+    }
     
     // Apply filters
     if (Object.keys(activeFilters).length > 0) {
@@ -107,7 +119,7 @@ export default function ArchivedPage() {
     }
     
     setDisplayedLeads(filtered);
-  }, [archivedLeads, sortField, sortDirection, activeFilters]);
+  }, [archivedLeads, sortField, sortDirection, activeFilters, searchTerm]);
 
   // Modify the useEffect that fetches leads to initialize displayedLeads
   useEffect(() => {
@@ -489,6 +501,22 @@ export default function ArchivedPage() {
             >
               Add New Lead
             </button>
+          </div>
+        </div>
+
+        {/* Add search bar */}
+        <div className="mt-4 flex">
+          <div className="relative flex-1 max-w-sm">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search archived tasks..."
+              className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            />
           </div>
         </div>
 

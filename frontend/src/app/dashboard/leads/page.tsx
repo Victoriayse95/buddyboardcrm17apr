@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '@/utils/format';
 import TableHeader from '@/components/TableHeader';
 import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 export default function AllLeadsPage() {
   const router = useRouter();
@@ -241,27 +242,22 @@ export default function AllLeadsPage() {
             </p>
           </div>
           <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex space-x-2">
-            {/* Search input */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pr-10"
-              />
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                >
-                  <span className="text-xl">&times;</span>
-                </button>
-              )}
-            </div>
+            {Object.keys(activeFilters).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveFilters({})}
+                className="flex items-center text-xs text-indigo-600 hover:text-indigo-900 mr-3"
+              >
+                <span>Clear Filters</span>
+                <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                  {Object.values(activeFilters).reduce((total, values) => total + values.length, 0)}
+                </span>
+              </button>
+            )}
             <ExportButton 
               onClick={handleExport} 
-              disabled={filteredLeads.length === 0}
+              disabled={displayedLeads.length === 0}
+              label="Export Leads"
             />
             <button
               type="button"
@@ -270,6 +266,22 @@ export default function AllLeadsPage() {
             >
               Add New Lead
             </button>
+          </div>
+        </div>
+
+        {/* Improved search bar with better visibility */}
+        <div className="mt-4 flex">
+          <div className="relative flex-1 max-w-sm">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search leads..."
+              className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            />
           </div>
         </div>
 
@@ -485,20 +497,6 @@ export default function AllLeadsPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Add a "Clear Filters" button */}
-        {Object.keys(activeFilters).length > 0 && (
-          <button
-            type="button"
-            onClick={() => setActiveFilters({})}
-            className="flex items-center text-xs text-indigo-600 hover:text-indigo-900"
-          >
-            <span>Clear Filters</span>
-            <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-              {Object.values(activeFilters).reduce((total, values) => total + values.length, 0)}
-            </span>
-          </button>
         )}
       </div>
     </div>
