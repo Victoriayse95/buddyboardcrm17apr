@@ -10,6 +10,8 @@ import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
 import { toast } from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '@/utils/format';
+import TableHeader from '@/components/TableHeader';
+import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
 
 export default function CompletedPage() {
   const router = useRouter();
@@ -19,6 +21,10 @@ export default function CompletedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
+  const [sortField, setSortField] = useState<keyof Lead | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
+  const [displayedLeads, setDisplayedLeads] = useState<Lead[]>([]);
 
   // Status options for dropdown
   const statusOptions = [
@@ -46,6 +52,72 @@ export default function CompletedPage() {
       toast.error('Failed to export leads. Please try again.');
     }
   };
+
+  // Generate filter options for different columns
+  const getFilterOptions = (field: string): FilterOption[] => {
+    if (field === 'service_start_date_month') {
+      const months = getUniqueDatesByMonth(completedLeads);
+      return months.map(month => ({
+        label: month,
+        value: month
+      }));
+    }
+    
+    if (field === 'status') {
+      return getUniqueValues(completedLeads, 'status').map(status => ({
+        label: status,
+        value: status
+      }));
+    }
+    
+    if (field === 'service_provider_name') {
+      return getUniqueValues(completedLeads, 'service_provider_name').map(provider => ({
+        label: provider,
+        value: provider
+      }));
+    }
+    
+    if (field === 'handled_by') {
+      const handlers = getUniqueValues(completedLeads, 'handled_by').filter(Boolean);
+      return handlers.map(handler => ({
+        label: handler,
+        value: handler
+      }));
+    }
+    
+    return [];
+  };
+
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field as keyof Lead);
+    setSortDirection(direction);
+  };
+
+  // Handle filter changes
+  const handleFilter = (field: string, values: string[]) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      [field]: values
+    }));
+  };
+
+  // Apply sorting and filtering when relevant states change
+  useEffect(() => {
+    let filtered = completedLeads;
+    
+    // Apply filters
+    if (Object.keys(activeFilters).length > 0) {
+      filtered = applyFilters(completedLeads, activeFilters);
+    }
+    
+    // Apply sorting
+    if (sortField) {
+      filtered = sortItems(filtered, sortField, sortDirection);
+    }
+    
+    setDisplayedLeads(filtered);
+  }, [completedLeads, sortField, sortDirection, activeFilters]);
 
   useEffect(() => {
     const fetchLeads = async () => {
@@ -82,6 +154,7 @@ export default function CompletedPage() {
         
         setLeads(allLeads);
         setCompletedLeads(completed);
+        setDisplayedLeads(completed); // Initialize displayed leads
         setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
@@ -239,38 +312,91 @@ export default function CompletedPage() {
                 <table className="min-w-full divide-y divide-gray-300">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                        Customer Name
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Contact
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Service Provider
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Service Date
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Total Price
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Status
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Handled By
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Notes
-                      </th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                      <TableHeader 
+                        label="Customer Name"
+                        field="customer_name"
+                        sortable={true}
+                        filterable={true}
+                        sortDirection={sortField === 'customer_name' ? sortDirection : null}
+                        onSort={handleSort}
+                        filterOptions={getFilterOptions('customer_name')}
+                        activeFilters={activeFilters['customer_name'] || []}
+                        onFilter={handleFilter}
+                      />
+                      <TableHeader 
+                        label="Contact"
+                        field="customer_contact"
+                        sortable={true}
+                        filterable={false}
+                        sortDirection={sortField === 'customer_contact' ? sortDirection : null}
+                        onSort={handleSort}
+                      />
+                      <TableHeader 
+                        label="Service Provider"
+                        field="service_provider_name"
+                        sortable={true}
+                        filterable={true}
+                        sortDirection={sortField === 'service_provider_name' ? sortDirection : null}
+                        onSort={handleSort}
+                        filterOptions={getFilterOptions('service_provider_name')}
+                        activeFilters={activeFilters['service_provider_name'] || []}
+                        onFilter={handleFilter}
+                      />
+                      <TableHeader 
+                        label="Service Date"
+                        field="service_start_date"
+                        sortable={true}
+                        filterable={true}
+                        sortDirection={sortField === 'service_start_date' ? sortDirection : null}
+                        onSort={handleSort}
+                        filterOptions={getFilterOptions('service_start_date_month')}
+                        activeFilters={activeFilters['service_start_date_month'] || []}
+                        onFilter={handleFilter}
+                      />
+                      <TableHeader 
+                        label="Total Price"
+                        field="total_price"
+                        sortable={true}
+                        filterable={false}
+                        sortDirection={sortField === 'total_price' ? sortDirection : null}
+                        onSort={handleSort}
+                      />
+                      <TableHeader 
+                        label="Status"
+                        field="status"
+                        sortable={true}
+                        filterable={true}
+                        sortDirection={sortField === 'status' ? sortDirection : null}
+                        onSort={handleSort}
+                        filterOptions={getFilterOptions('status')}
+                        activeFilters={activeFilters['status'] || []}
+                        onFilter={handleFilter}
+                      />
+                      <TableHeader 
+                        label="Handled By"
+                        field="handled_by"
+                        sortable={true}
+                        filterable={true}
+                        sortDirection={sortField === 'handled_by' ? sortDirection : null}
+                        onSort={handleSort}
+                        filterOptions={getFilterOptions('handled_by')}
+                        activeFilters={activeFilters['handled_by'] || []}
+                        onFilter={handleFilter}
+                      />
+                      <TableHeader 
+                        label="Notes"
+                        field="notes"
+                        sortable={false}
+                        filterable={false}
+                      />
+                      <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {completedLeads.length > 0 ? (
-                      completedLeads.map((lead) => (
+                    {displayedLeads.length > 0 ? (
+                      displayedLeads.map((lead) => (
                         <tr key={lead.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                             {editingCell?.leadId === lead.id && editingCell?.field === 'customer_name' ? (
@@ -429,6 +555,12 @@ export default function CompletedPage() {
                           </td>
                         </tr>
                       ))
+                    ) : completedLeads.length > 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
+                          No leads match your filters. <button onClick={() => setActiveFilters({})} className="text-indigo-600 hover:text-indigo-800">Clear all filters</button>
+                        </td>
+                      </tr>
                     ) : (
                       <tr>
                         <td colSpan={9} className="py-4 text-center text-sm text-gray-500">

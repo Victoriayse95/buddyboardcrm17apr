@@ -9,6 +9,8 @@ import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
 import { toast } from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '@/utils/format';
+import TableHeader from '@/components/TableHeader';
+import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
 
 export default function AllLeadsPage() {
   const router = useRouter();
@@ -19,6 +21,10 @@ export default function AllLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
+  const [sortField, setSortField] = useState<keyof Lead | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
+  const [displayedLeads, setDisplayedLeads] = useState<Lead[]>([]);
 
   // Status options for dropdown (matching dashboard page)
   const statusOptions = [
@@ -30,6 +36,76 @@ export default function AllLeadsPage() {
     "Completed"
   ];
 
+  // Generate filter options function
+  const getFilterOptions = (field: string): FilterOption[] => {
+    if (field === 'service_start_date_month') {
+      const months = getUniqueDatesByMonth(leads);
+      return months.map(month => ({
+        label: month,
+        value: month
+      }));
+    }
+    
+    if (field === 'status') {
+      return getUniqueValues(leads, 'status').map(status => ({
+        label: status,
+        value: status
+      }));
+    }
+    
+    if (field === 'service_provider_name') {
+      return getUniqueValues(leads, 'service_provider_name').map(provider => ({
+        label: provider,
+        value: provider
+      }));
+    }
+    
+    return [];
+  };
+
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field as keyof Lead);
+    setSortDirection(direction);
+  };
+
+  // Handle filter changes
+  const handleFilter = (field: string, values: string[]) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      [field]: values
+    }));
+  };
+
+  // Apply sorting and filtering when relevant states change
+  useEffect(() => {
+    let filteredResults = leads;
+    
+    // First apply the search filter
+    if (searchTerm.trim() !== '') {
+      const lowerCaseSearch = searchTerm.toLowerCase();
+      filteredResults = filteredResults.filter(lead => 
+        lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
+        lead.service_provider_name.toLowerCase().includes(lowerCaseSearch) ||
+        lead.status.toLowerCase().includes(lowerCaseSearch)
+      );
+    }
+    
+    // Then apply column filters
+    if (Object.keys(activeFilters).length > 0) {
+      filteredResults = applyFilters(filteredResults, activeFilters);
+    }
+    
+    // Finally apply sorting
+    if (sortField) {
+      filteredResults = sortItems(filteredResults, sortField, sortDirection);
+    }
+    
+    setFilteredLeads(filteredResults);
+    setDisplayedLeads(filteredResults);
+  }, [leads, searchTerm, sortField, sortDirection, activeFilters]);
+
+  // Modify the useEffect that fetches leads
   useEffect(() => {
     const fetchLeads = async () => {
       try {
@@ -43,6 +119,7 @@ export default function AllLeadsPage() {
         const fetchedLeads = await getLeads();
         setLeads(fetchedLeads);
         setFilteredLeads(fetchedLeads);
+        setDisplayedLeads(fetchedLeads);
         setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
@@ -53,21 +130,6 @@ export default function AllLeadsPage() {
 
     fetchLeads();
   }, []);
-
-  // Filter leads based on search term
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredLeads(leads);
-    } else {
-      const lowerCaseSearch = searchTerm.toLowerCase();
-      const filtered = leads.filter(lead => 
-        lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-        lead.service_provider_name.toLowerCase().includes(lowerCaseSearch) ||
-        lead.status.toLowerCase().includes(lowerCaseSearch)
-      );
-      setFilteredLeads(filtered);
-    }
-  }, [searchTerm, leads]);
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
@@ -227,31 +289,76 @@ export default function AllLeadsPage() {
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                          Customer Name
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Contact
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Service Provider
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Service Date
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Total Price
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Status
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Notes
-                        </th>
+                        <TableHeader 
+                          label="Customer Name"
+                          field="customer_name"
+                          sortable={true}
+                          filterable={true}
+                          sortDirection={sortField === 'customer_name' ? sortDirection : null}
+                          onSort={handleSort}
+                          filterOptions={getFilterOptions('customer_name')}
+                          activeFilters={activeFilters['customer_name'] || []}
+                          onFilter={handleFilter}
+                        />
+                        <TableHeader 
+                          label="Contact"
+                          field="customer_contact"
+                          sortable={true}
+                          filterable={false}
+                          sortDirection={sortField === 'customer_contact' ? sortDirection : null}
+                          onSort={handleSort}
+                        />
+                        <TableHeader 
+                          label="Service Provider"
+                          field="service_provider_name"
+                          sortable={true}
+                          filterable={true}
+                          sortDirection={sortField === 'service_provider_name' ? sortDirection : null}
+                          onSort={handleSort}
+                          filterOptions={getFilterOptions('service_provider_name')}
+                          activeFilters={activeFilters['service_provider_name'] || []}
+                          onFilter={handleFilter}
+                        />
+                        <TableHeader 
+                          label="Service Date"
+                          field="service_start_date"
+                          sortable={true}
+                          filterable={true}
+                          sortDirection={sortField === 'service_start_date' ? sortDirection : null}
+                          onSort={handleSort}
+                          filterOptions={getFilterOptions('service_start_date_month')}
+                          activeFilters={activeFilters['service_start_date_month'] || []}
+                          onFilter={handleFilter}
+                        />
+                        <TableHeader 
+                          label="Total Price"
+                          field="total_price"
+                          sortable={true}
+                          filterable={false}
+                          sortDirection={sortField === 'total_price' ? sortDirection : null}
+                          onSort={handleSort}
+                        />
+                        <TableHeader 
+                          label="Status"
+                          field="status"
+                          sortable={true}
+                          filterable={true}
+                          sortDirection={sortField === 'status' ? sortDirection : null}
+                          onSort={handleSort}
+                          filterOptions={getFilterOptions('status')}
+                          activeFilters={activeFilters['status'] || []}
+                          onFilter={handleFilter}
+                        />
+                        <TableHeader 
+                          label="Notes"
+                          field="notes"
+                          sortable={false}
+                          filterable={false}
+                        />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {filteredLeads.map((lead) => (
+                      {displayedLeads.map((lead) => (
                         <tr key={lead.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                             {editingCell?.leadId === lead.id && editingCell?.field === 'customer_name' ? (
@@ -378,6 +485,20 @@ export default function AllLeadsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Add a "Clear Filters" button */}
+        {Object.keys(activeFilters).length > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveFilters({})}
+            className="flex items-center text-xs text-indigo-600 hover:text-indigo-900"
+          >
+            <span>Clear Filters</span>
+            <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+              {Object.values(activeFilters).reduce((total, values) => total + values.length, 0)}
+            </span>
+          </button>
         )}
       </div>
     </div>
