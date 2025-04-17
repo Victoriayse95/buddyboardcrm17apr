@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
-import { PencilIcon } from '@heroicons/react/24/outline';
+import { getLeads, updateLead, deleteLead, Lead, seedInitialData } from '@/lib/leadStorage';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
@@ -150,6 +150,33 @@ export default function UpcomingPage() {
     } catch (error) {
       console.error('Error exporting tasks:', error);
       toast.error('Failed to export tasks. Please try again.');
+    }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    // Confirm deletion with the user
+    if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const success = await deleteLead(id);
+      
+      if (success) {
+        // Remove from leads and upcoming leads
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
+        setUpcomingLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
+        
+        toast.success('Lead deleted successfully');
+      } else {
+        toast.error('Failed to delete lead');
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('An error occurred while deleting the lead');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -301,6 +328,15 @@ export default function UpcomingPage() {
           </div>
         )}
       </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <button
+          onClick={() => handleDeleteLead(lead.id)}
+          className="text-red-600 hover:text-red-900 focus:outline-none"
+          title="Delete lead"
+        >
+          <TrashIcon className="h-5 w-5" />
+        </button>
+      </td>
     </tr>
   );
 
@@ -386,6 +422,9 @@ export default function UpcomingPage() {
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Notes
                       </th>
+                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -393,7 +432,7 @@ export default function UpcomingPage() {
                       upcomingLeads.map((lead) => renderLeadRow(lead))
                     ) : (
                       <tr>
-                        <td colSpan={8} className="py-4 text-center text-sm text-gray-500">
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
                           No upcoming tasks found
                         </td>
                       </tr>

@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead } from '@/lib/leadStorage';
-import { PencilIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { getLeads, updateLead, deleteLead, Lead } from '@/lib/leadStorage';
+import { PencilIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { toast } from 'react-hot-toast';
 
 export default function HomePage() {
   const router = useRouter();
@@ -345,6 +346,34 @@ export default function HomePage() {
     }
   };
 
+  const handleDeleteLead = async (id: string) => {
+    // Confirm deletion with the user
+    if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const success = await deleteLead(id);
+      
+      if (success) {
+        // Remove from leads and filtered leads
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
+        setContactLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
+        setFilteredContactLeads(prevLeads => prevLeads.filter(lead => lead.id !== id));
+        
+        toast.success('Lead deleted successfully');
+      } else {
+        toast.error('Failed to delete lead');
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('An error occurred while deleting the lead');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderLeadRow = (lead: Lead) => (
     <tr key={lead.id}>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
@@ -493,6 +522,15 @@ export default function HomePage() {
           </div>
         )}
       </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <button
+          onClick={() => handleDeleteLead(lead.id)}
+          className="text-red-600 hover:text-red-900 focus:outline-none"
+          title="Delete lead"
+        >
+          <TrashIcon className="h-5 w-5" />
+        </button>
+      </td>
     </tr>
   );
 
@@ -592,6 +630,9 @@ export default function HomePage() {
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Notes
                       </th>
+                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -599,13 +640,13 @@ export default function HomePage() {
                       filteredContactLeads.map((lead) => renderLeadRow(lead))
                     ) : searchTerm.trim() !== '' && contactLeads.length > 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-4 text-center text-sm text-gray-500">
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
                           No leads found matching "{searchTerm}"
                         </td>
                       </tr>
                     ) : (
                       <tr>
-                        <td colSpan={8} className="py-4 text-center text-sm text-gray-500">
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
                           No leads to contact found for 3 days from now
                         </td>
                       </tr>
