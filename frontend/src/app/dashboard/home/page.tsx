@@ -56,22 +56,29 @@ export default function HomePage() {
     }
   }, [searchTerm, contactLeads]);
 
-  // Update useEffect to explicitly add April 20 leads with correct formatting
+  // Update useEffect to fetch real leads first and preserve them
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        console.log("Creating and displaying April 20, 2024 test leads");
+        console.log("Fetching real leads and adding April 20 test leads");
         
-        // Force clear localStorage to reset data
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('buddyboard_leads');
-          console.log("Successfully cleared localStorage");
-        }
+        // First, fetch the real leads from storage
+        const realLeads = await getLeads();
+        console.log("Retrieved real leads:", realLeads.length);
         
-        // Create multiple April 20 test leads
+        // Separate April 20 leads
+        const existingApril20Leads = realLeads.filter(lead => 
+          lead.service_start_date === "2024-04-20" && 
+          lead.status !== "Completed" && 
+          lead.status !== "Cancelled"
+        );
+        
+        console.log("Found existing April 20 leads:", existingApril20Leads.length);
+        
+        // Create test leads
         const testLeads: Lead[] = [
           {
             id: "april20-test-1",
@@ -105,12 +112,14 @@ export default function HomePage() {
           }
         ];
         
-        console.log("Created test leads:", testLeads);
+        // Combine test leads with existing April 20 leads
+        const allApril20Leads = [...existingApril20Leads, ...testLeads];
+        console.log("Combined April 20 leads:", allApril20Leads.length);
         
-        // Skip normal data fetching and just use our test leads
-        setLeads(testLeads);
-        setContactLeads(testLeads);
-        setFilteredContactLeads(testLeads);
+        // Set state with all leads and the April 20 leads
+        setLeads([...realLeads, ...testLeads]);
+        setContactLeads(allApril20Leads);
+        setFilteredContactLeads(allApril20Leads);
         setLoading(false);
         
       } catch (error: any) {
