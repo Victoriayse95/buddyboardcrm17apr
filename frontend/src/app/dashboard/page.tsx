@@ -7,9 +7,8 @@ export default function RootDashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the upcoming page when this root dashboard route is accessed directly
-    router.push('/dashboard/upcoming');
+    router.push('/dashboard/home');
   }, [router]);
 
-  return null; // No need to render anything since we're redirecting
-} 
+  return null;
+}
