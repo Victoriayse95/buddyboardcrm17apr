@@ -43,20 +43,6 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     handled_by: "Victoria"
   },
   {
-    customer_name: "April 20 Test Lead",
-    customer_contact: "555-123-4567",
-    service_provider_name: "Best Pet Care",
-    service_provider_contact: "555-987-6543",
-    service_start_date: "2024-04-20",
-    service_end_date: "2024-04-21",
-    service_start_time: "09:00",
-    service_end_time: "17:00",
-    notes: "This is a test lead with April 20 date",
-    total_price: 150,
-    status: "Send Reminder",
-    created_at: new Date().toISOString()
-  },
-  {
     customer_name: "Jane Smith",
     customer_contact: "555-234-5678",
     service_provider_name: "Paws & Claws",
@@ -116,19 +102,20 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     handled_by: "Waiyee"
   },
   {
-    customer_name: "Victoria-Testing",
-    customer_contact: "555-123-4567",
-    service_provider_name: "Best Pet Care",
-    service_provider_contact: "555-987-6543",
+    customer_name: "Three Day Reminder Lead",
+    customer_contact: "555-678-9012",
+    service_provider_name: "Pet Experts",
+    service_provider_contact: "555-432-1098",
     service_start_date: (() => {
       // Calculate exactly 3 days from now
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const threeDaysFromNow = new Date(today);
       threeDaysFromNow.setDate(today.getDate() + 3);
-      console.log("Created test lead for date:", threeDaysFromNow.toISOString().split('T')[0]);
-      return threeDaysFromNow.toISOString().split('T')[0];
-    })(), 
+      const dateString = threeDaysFromNow.toISOString().split('T')[0];
+      console.log("Created test reminder lead for date:", dateString);
+      return dateString;
+    })(),
     service_end_date: (() => {
       // Calculate exactly 4 days from now
       const today = new Date();
@@ -139,8 +126,8 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     })(),
     service_start_time: "09:00",
     service_end_time: "17:00",
-    notes: "Dog needs special diet - premium food only",
-    total_price: 150,
+    notes: "Customer requires reminder call - exactly 3 days from today",
+    total_price: 90,
     status: "Send Reminder",
     created_at: new Date().toISOString()
   }
