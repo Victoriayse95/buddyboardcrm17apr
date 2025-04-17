@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import ExportButton from '@/components/ExportButton';
 import { exportLeadsToExcel } from '@/utils/exportUtils';
 import { toast } from 'react-hot-toast';
+import { formatDateDDMMYYYY } from '@/utils/format';
 
 export default function CompletedPage() {
   const router = useRouter();
@@ -58,8 +59,26 @@ export default function CompletedPage() {
         // Fetch leads from Firestore
         const allLeads = await getLeads();
         
-        // Completed leads - status is Completed
-        const completed = allLeads.filter(lead => lead.status === "Completed");
+        // Get current date (assuming today is April 17, 2025 for testing)
+        const today = new Date();
+        console.log("Current date for filtering completed services:", today.toISOString());
+        
+        // Completed leads - status is Completed OR service date is in the past
+        const completed = allLeads.filter(lead => {
+          // Check if status is completed
+          const isCompletedStatus = lead.status === "Completed";
+          
+          // Check if service date is in the past
+          const serviceDate = new Date(lead.service_start_date);
+          const isPastService = serviceDate < today;
+          
+          console.log(`Lead ${lead.customer_name}, date: ${lead.service_start_date}, is past: ${isPastService}, status: ${lead.status}`);
+          
+          // Include in completed if either condition is true
+          return isCompletedStatus || (isPastService && lead.status !== "Cancelled");
+        });
+        
+        console.log(`Found ${completed.length} completed/past services`);
         
         setLeads(allLeads);
         setCompletedLeads(completed);
@@ -263,7 +282,7 @@ export default function CompletedPage() {
                             {lead.service_provider_name}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {new Date(lead.service_start_date).toLocaleDateString()}
+                            {formatDateDDMMYYYY(lead.service_start_date)}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             ${lead.total_price}
