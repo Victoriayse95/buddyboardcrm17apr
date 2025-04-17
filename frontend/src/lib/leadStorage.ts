@@ -100,6 +100,20 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     status: "Service In Progress",
     created_at: "2023-06-04T11:15:00Z",
     handled_by: "Waiyee"
+  },
+  {
+    customer_name: "Victoria Testing",
+    customer_contact: "555-678-9012",
+    service_provider_name: "Test Provider",
+    service_provider_contact: "555-432-1098",
+    service_start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Exactly 3 days from now
+    service_end_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    service_start_time: "10:00",
+    service_end_time: "16:00",
+    notes: "This is a test lead that should appear in Leads to Contact",
+    total_price: 75,
+    status: "Pending Service",
+    created_at: new Date().toISOString()
   }
 ];
 

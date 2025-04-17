@@ -74,13 +74,39 @@ export default function HomePage() {
         // Format the date as YYYY-MM-DD
         const targetDate = threeDaysFromNow.toISOString().split('T')[0];
         
+        console.log("Target date for leads to contact:", targetDate);
+        
         // Fetch leads from localStorage
         const allLeads = await getLeads();
         
+        // Log all lead dates to debug
+        console.log("All leads service dates:", allLeads.map(lead => ({
+          id: lead.id,
+          customer: lead.customer_name,
+          date: lead.service_start_date,
+          targetDate: targetDate,
+          matches: lead.service_start_date === targetDate
+        })));
+        
         // Leads to contact - exactly 3 days from now
-        const leadsToContact = allLeads.filter(lead => 
-          lead.service_start_date === targetDate && lead.status !== "Completed"
-        );
+        const leadsToContact = allLeads.filter(lead => {
+          const matches = lead.service_start_date === targetDate && lead.status !== "Completed";
+          
+          // For debugging purposes
+          if (lead.customer_name.toLowerCase().includes("testing") || lead.customer_name.toLowerCase().includes("victoria")) {
+            console.log("Testing lead date check:", {
+              leadName: lead.customer_name,
+              leadDate: lead.service_start_date,
+              targetDate: targetDate,
+              matches: matches
+            });
+          }
+          
+          return matches;
+        });
+        
+        console.log(`Found ${leadsToContact.length} leads for exactly 3 days from now:`, 
+          leadsToContact.map(l => l.customer_name));
         
         // Simulate API delay
         setTimeout(() => {
