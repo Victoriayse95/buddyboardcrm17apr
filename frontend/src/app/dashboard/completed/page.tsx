@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead } from '@/lib/leadStorage';
+import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
 import { PencilIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ExportButton from '@/components/ExportButton';
+import { exportLeadsToExcel } from '@/utils/exportUtils';
+import { toast } from 'react-hot-toast';
 
 export default function CompletedPage() {
   const router = useRouter();
@@ -14,7 +17,7 @@ export default function CompletedPage() {
   const [completedLeads, setCompletedLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{leadId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -32,24 +35,35 @@ export default function CompletedPage() {
     "Waiyee"
   ];
 
+  // Add a function to handle the export
+  const handleExport = () => {
+    try {
+      exportLeadsToExcel(completedLeads, 'completed-leads');
+      toast.success('Completed leads exported successfully');
+    } catch (error) {
+      console.error('Error exporting leads:', error);
+      toast.error('Failed to export leads. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Fetch leads from localStorage
-        const allLeads = getLeads();
+        // Seed initial data if needed
+        await seedInitialData();
+        
+        // Fetch leads from Firestore
+        const allLeads = await getLeads();
         
         // Completed leads - status is Completed
         const completed = allLeads.filter(lead => lead.status === "Completed");
         
-        // Simulate API delay
-        setTimeout(() => {
-          setLeads(allLeads);
-          setCompletedLeads(completed);
-          setLoading(false);
-        }, 500);
+        setLeads(allLeads);
+        setCompletedLeads(completed);
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
         setError('Failed to load leads. Please try again later.');
@@ -60,10 +74,10 @@ export default function CompletedPage() {
     fetchLeads();
   }, []);
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      // Update the lead in localStorage
-      const updatedLead = updateLead(leadId, { status: newStatus });
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { status: newStatus });
       
       if (updatedLead) {
         // Update the leads state
@@ -95,14 +109,14 @@ export default function CompletedPage() {
   };
   
   // Function to move a lead back to upcoming tasks
-  const moveToUpcoming = (leadId: number) => {
+  const moveToUpcoming = async (leadId: string) => {
     try {
       // Find the lead in completed leads
       const leadToMove = completedLeads.find(lead => lead.id === leadId);
       
       if (leadToMove) {
         // Change status to Pending Service
-        const updatedLead = updateLead(leadId, { status: "Pending Service" });
+        const updatedLead = await updateLead(leadId, { status: "Pending Service" });
         
         if (updatedLead) {
           // Update leads state
@@ -121,189 +135,32 @@ export default function CompletedPage() {
     }
   };
   
-  const handleCellEdit = (leadId: number, field: string, value: string | number) => {
-    // Update the lead in localStorage
-    const updatedLead = updateLead(leadId, { [field]: value });
-    
-    if (updatedLead) {
-      // Update the leads state
-      setLeads(leads.map(lead => 
-        lead.id === leadId ? updatedLead : lead
-      ));
+  const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
+    try {
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { [field]: value });
       
-      // Update in completedLeads if present
-      if (completedLeads.some(lead => lead.id === leadId)) {
-        setCompletedLeads(completedLeads.map(lead => 
+      if (updatedLead) {
+        // Update the leads state
+        setLeads(leads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         ));
+        
+        // Update in completedLeads if present
+        if (completedLeads.some(lead => lead.id === leadId)) {
+          setCompletedLeads(completedLeads.map(lead => 
+            lead.id === leadId ? updatedLead : lead
+          ));
+        }
       }
+    } catch (error) {
+      console.error(`Error updating lead ${leadId}, field ${field}:`, error);
+      alert('Failed to update lead. Please try again.');
     }
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
     
     // Close the editing cell
     setEditingCell(null);
   };
-
-  const renderLeadRow = (lead: Lead) => (
-    <tr key={lead.id}>
-      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'customer_name' ? (
-          <input 
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.customer_name}
-            onBlur={(e) => handleCellEdit(lead.id, 'customer_name', e.target.value)}
-            autoFocus
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'customer_name'})}
-          >
-            <span className="flex-1 min-w-0 break-words">{lead.customer_name}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'customer_contact' ? (
-          <input 
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.customer_contact}
-            onBlur={(e) => handleCellEdit(lead.id, 'customer_contact', e.target.value)}
-            autoFocus
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'customer_contact'})}
-          >
-            <span className="flex-1 min-w-0 break-words">{lead.customer_contact}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'service_provider_name' ? (
-          <input 
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.service_provider_name}
-            onBlur={(e) => handleCellEdit(lead.id, 'service_provider_name', e.target.value)}
-            autoFocus
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'service_provider_name'})}
-          >
-            <span className="flex-1 min-w-0 break-words">{lead.service_provider_name}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'service_start_date' ? (
-          <input 
-            type="date"
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.service_start_date}
-            onBlur={(e) => handleCellEdit(lead.id, 'service_start_date', e.target.value)}
-            autoFocus
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'service_start_date'})}
-          >
-            <span className="flex-1 min-w-0 break-words">{new Date(lead.service_start_date).toLocaleDateString()}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'total_price' ? (
-          <input 
-            type="number"
-            step="0.01"
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.total_price}
-            onBlur={(e) => handleCellEdit(lead.id, 'total_price', parseFloat(e.target.value))}
-            autoFocus
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'total_price'})}
-          >
-            <span className="flex-1 min-w-0 break-words">${lead.total_price}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        <select
-          value={lead.status}
-          onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-        >
-          {statusOptions.map(option => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'handled_by' ? (
-          <select
-            className="w-full p-1 border rounded"
-            defaultValue={lead.handled_by || ''}
-            onBlur={(e) => handleCellEdit(lead.id, 'handled_by', e.target.value)}
-            autoFocus
-          >
-            <option value="">Select handler</option>
-            {handlerOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'handled_by'})}
-          >
-            <span className="flex-1 min-w-0 break-words">{lead.handled_by || 'Not assigned'}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="px-3 py-4 text-sm text-gray-500">
-        {editingCell?.leadId === lead.id && editingCell?.field === 'notes' ? (
-          <textarea 
-            className="w-full p-1 border rounded" 
-            defaultValue={lead.notes}
-            onBlur={(e) => handleCellEdit(lead.id, 'notes', e.target.value)}
-            autoFocus
-            rows={3}
-          />
-        ) : (
-          <div 
-            className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
-            onClick={() => setEditingCell({leadId: lead.id, field: 'notes'})}
-          >
-            <span className="flex-1 min-w-40 max-w-60 break-words">{lead.notes}</span>
-            <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
-          </div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        <button
-          onClick={() => moveToUpcoming(lead.id)}
-          className="text-indigo-600 hover:text-indigo-900 font-medium"
-        >
-          Move to Upcoming
-        </button>
-      </td>
-    </tr>
-  );
 
   if (loading) {
     return (
@@ -333,13 +190,26 @@ export default function CompletedPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Completed Tasks Section */}
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
-            <h1 className="text-3xl font-semibold text-gray-900">Completed Tasks</h1>
+            <h1 className="text-3xl font-semibold text-gray-900">Completed Services</h1>
             <p className="mt-2 text-sm text-gray-700">
-              All tasks that have been completed
+              Services that have been successfully completed
             </p>
+          </div>
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex space-x-2">
+            <ExportButton 
+              onClick={handleExport} 
+              disabled={completedLeads.length === 0}
+              label="Export Completed"
+            />
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard/leads/new')}
+              className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Add New Lead
+            </button>
           </div>
         </div>
 
@@ -374,18 +244,62 @@ export default function CompletedPage() {
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Notes
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Actions
+                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                        <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {completedLeads.length > 0 ? (
-                      completedLeads.map((lead) => renderLeadRow(lead))
+                      completedLeads.map((lead) => (
+                        <tr key={lead.id}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            {lead.customer_name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {lead.customer_contact}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {lead.service_provider_name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {new Date(lead.service_start_date).toLocaleDateString()}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            ${lead.total_price}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <select
+                              value={lead.status}
+                              onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            >
+                              {statusOptions.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {lead.handled_by || 'Not assigned'}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            {lead.notes}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <button
+                              type="button"
+                              onClick={() => moveToUpcoming(lead.id)}
+                              className="text-indigo-600 hover:text-indigo-900 font-medium"
+                            >
+                              Move to Upcoming
+                            </button>
+                          </td>
+                        </tr>
+                      ))
                     ) : (
                       <tr>
                         <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
-                          No completed tasks found
+                          No completed services found
                         </td>
                       </tr>
                     )}

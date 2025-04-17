@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead } from '@/lib/leadStorage';
+import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
 import { PencilIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ExportButton from '@/components/ExportButton';
+import { exportLeadsToExcel } from '@/utils/exportUtils';
+import { toast } from 'react-hot-toast';
 
 export default function ArchivedPage() {
   const router = useRouter();
@@ -14,7 +17,7 @@ export default function ArchivedPage() {
   const [archivedLeads, setArchivedLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{leadId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -32,17 +35,31 @@ export default function ArchivedPage() {
     "Waiyee"
   ];
 
+  // Add a function to handle the export
+  const handleExport = () => {
+    try {
+      exportLeadsToExcel(archivedLeads, 'archived-leads');
+      toast.success('Archived leads exported successfully');
+    } catch (error) {
+      console.error('Error exporting leads:', error);
+      toast.error('Failed to export leads. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
+        // Seed initial data if needed
+        await seedInitialData();
+        
         // Get the current date
         const now = new Date().getTime();
         
-        // Fetch leads from localStorage
-        const allLeads = getLeads();
+        // Fetch leads from Firestore
+        const allLeads = await getLeads();
         
         // Archived leads - cancelled or past end date but not completed
         const archived = allLeads.filter(lead => {
@@ -50,12 +67,9 @@ export default function ArchivedPage() {
           return lead.status === "Cancelled" || (endDate < now && lead.status !== "Completed");
         });
         
-        // Simulate API delay
-        setTimeout(() => {
-          setLeads(allLeads);
-          setArchivedLeads(archived);
-          setLoading(false);
-        }, 500);
+        setLeads(allLeads);
+        setArchivedLeads(archived);
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
         setError('Failed to load leads. Please try again later.');
@@ -66,10 +80,10 @@ export default function ArchivedPage() {
     fetchLeads();
   }, []);
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      // Update the lead in localStorage
-      const updatedLead = updateLead(leadId, { status: newStatus });
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { status: newStatus });
       
       if (updatedLead) {
         // Update the leads state
@@ -105,14 +119,14 @@ export default function ArchivedPage() {
   };
   
   // Function to move a lead back to upcoming tasks
-  const moveToUpcoming = (leadId: number) => {
+  const moveToUpcoming = async (leadId: string) => {
     try {
       // Find the lead in archived leads
       const leadToMove = archivedLeads.find(lead => lead.id === leadId);
       
       if (leadToMove) {
         // Change status to Pending Service
-        const updatedLead = updateLead(leadId, { status: "Pending Service" });
+        const updatedLead = await updateLead(leadId, { status: "Pending Service" });
         
         if (updatedLead) {
           // Update leads state
@@ -131,26 +145,28 @@ export default function ArchivedPage() {
     }
   };
   
-  const handleCellEdit = (leadId: number, field: string, value: string | number) => {
-    // Update the lead in localStorage
-    const updatedLead = updateLead(leadId, { [field]: value });
-    
-    if (updatedLead) {
-      // Update the leads state
-      setLeads(leads.map(lead => 
-        lead.id === leadId ? updatedLead : lead
-      ));
+  const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
+    try {
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { [field]: value });
       
-      // Update in archivedLeads if present
-      if (archivedLeads.some(lead => lead.id === leadId)) {
-        setArchivedLeads(archivedLeads.map(lead => 
+      if (updatedLead) {
+        // Update the leads state
+        setLeads(leads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         ));
+        
+        // Update in archivedLeads if present
+        if (archivedLeads.some(lead => lead.id === leadId)) {
+          setArchivedLeads(archivedLeads.map(lead => 
+            lead.id === leadId ? updatedLead : lead
+          ));
+        }
       }
+    } catch (error) {
+      console.error(`Error updating lead ${leadId}, field ${field}:`, error);
+      alert('Failed to update lead. Please try again.');
     }
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
     
     // Close the editing cell
     setEditingCell(null);
@@ -343,13 +359,26 @@ export default function ArchivedPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Archived Tasks Section */}
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
-            <h1 className="text-3xl font-semibold text-gray-900">Archived Tasks</h1>
+            <h1 className="text-3xl font-semibold text-gray-900">Archived Leads</h1>
             <p className="mt-2 text-sm text-gray-700">
-              Tasks with status set to cancelled or past end dates
+              Cancelled leads or leads with end dates in the past
             </p>
+          </div>
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex space-x-2">
+            <ExportButton 
+              onClick={handleExport} 
+              disabled={archivedLeads.length === 0}
+              label="Export Archived"
+            />
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard/leads/new')}
+              className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Add New Lead
+            </button>
           </div>
         </div>
 
@@ -384,8 +413,8 @@ export default function ArchivedPage() {
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Notes
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Actions
+                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                        <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
@@ -395,7 +424,7 @@ export default function ArchivedPage() {
                     ) : (
                       <tr>
                         <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
-                          No archived tasks found
+                          No archived leads found
                         </td>
                       </tr>
                     )}
