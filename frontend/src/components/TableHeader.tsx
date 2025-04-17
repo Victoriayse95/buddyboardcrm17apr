@@ -96,7 +96,7 @@ export default function TableHeader({
   };
   
   return (
-    <div className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 relative">
+    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 relative">
       <div 
         className={`group flex items-center gap-x-2 ${sortable ? 'cursor-pointer' : ''}`}
         onClick={handleSort}
@@ -157,6 +157,6 @@ export default function TableHeader({
           </div>
         </div>
       )}
-    </div>
+    </th>
   );
 } 
