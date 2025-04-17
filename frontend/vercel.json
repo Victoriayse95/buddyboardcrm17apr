@@ -3,6 +3,15 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "outputDirectory": ".next",
+  "github": {
+    "silent": true,
+    "autoJobCancelation": true
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
   "env": {
     "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyD4y1ggPILUfhN5G8bmxnjwA1VSolDSFpY",
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "buddyboardcrm-e9ac6.firebaseapp.com",
