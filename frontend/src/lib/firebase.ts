@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -18,9 +18,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-let db;
-let auth;
+let app: FirebaseApp;
+let db: Firestore;
+let auth: Auth;
 
 // Only initialize Firebase if it hasn't been initialized yet
 // This prevents re-initialization during SSR
