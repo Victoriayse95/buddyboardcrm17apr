@@ -105,14 +105,32 @@ export default function HomePage() {
         
         // Filter leads that are exactly 3 days away and not completed/cancelled
         const leadsToContact = fetchedLeads.filter(lead => {
+          // Compare the date strings
           const matchesDate = lead.service_start_date === targetDate;
+          
+          // If we want to be more tolerant, we could also check day differences
+          // This approach might help if there are timezone or day calculation issues
+          const leadDate = new Date(lead.service_start_date);
+          leadDate.setHours(0, 0, 0, 0);
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Calculate difference in days
+          const diffTime = leadDate.getTime() - today.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          
+          // Check if the difference is 3 days
+          const isThreeDaysAway = diffDays === 3;
+          
+          // Only keep leads that aren't completed or cancelled
           const validStatus = lead.status !== "Completed" && lead.status !== "Cancelled";
           
-          if (matchesDate) {
-            console.log(`Found lead with matching date: ${lead.customer_name}, date: ${lead.service_start_date}, status: ${lead.status}`);
+          if (matchesDate || isThreeDaysAway) {
+            console.log(`Found lead with matching date: ${lead.customer_name}, date: ${lead.service_start_date}, status: ${lead.status}, days difference: ${diffDays}`);
           }
           
-          return matchesDate && validStatus;
+          return (matchesDate || isThreeDaysAway) && validStatus;
         });
         
         console.log("Found leads to contact:", leadsToContact.length);
@@ -228,15 +246,38 @@ export default function HomePage() {
         // Get the target date for 3 days from now
         const targetDate = getThreeDayTargetDate();
         
-        // Determine where the lead should appear based on status and dates
-        const isExactlyThreeDays = updatedLead.service_start_date === targetDate;
+        // Compare the date strings
+        const matchesDate = updatedLead.service_start_date === targetDate;
         
-        // Handle contactLeads table (leads exactly 3 days away)
-        if (isExactlyThreeDays && newStatus !== "Completed" && newStatus !== "Cancelled") {
+        // Also check day differences
+        const leadDate = new Date(updatedLead.service_start_date);
+        leadDate.setHours(0, 0, 0, 0);
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Calculate difference in days
+        const diffTime = leadDate.getTime() - today.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Check if the difference is 3 days
+        const isThreeDaysAway = diffDays === 3;
+        
+        // Check if this lead should be in contactLeads
+        const isExactlyThreeDays = matchesDate || isThreeDaysAway;
+        
+        console.log(`Date changed for lead ${leadId}: ${updatedLead.service_start_date}, matches 3-day target: ${isExactlyThreeDays}, days difference: ${diffDays}`);
+        
+        // Update contactLeads
+        if (isExactlyThreeDays && 
+            updatedLead.status !== "Completed" && 
+            updatedLead.status !== "Cancelled") {
+          // If the lead isn't already in contactLeads, add it
           if (!contactLeads.some(lead => lead.id === leadId)) {
             const newContactLeads = [...contactLeads, updatedLead];
             setContactLeads(newContactLeads);
-            // Update filtered leads as well
+            
+            // Update filtered leads
             if (searchTerm.trim() === '') {
               setFilteredContactLeads(newContactLeads);
             } else {
@@ -247,10 +288,12 @@ export default function HomePage() {
               ));
             }
           } else {
+            // Update the lead in contactLeads if it's already there
             const updatedContactLeads = contactLeads.map(lead => 
               lead.id === leadId ? updatedLead : lead
             );
             setContactLeads(updatedContactLeads);
+            
             // Update filtered leads with same filter
             if (searchTerm.trim() === '') {
               setFilteredContactLeads(updatedContactLeads);
@@ -263,14 +306,17 @@ export default function HomePage() {
             }
           }
         } else {
-          const filteredLeads = contactLeads.filter(lead => lead.id !== leadId);
-          setContactLeads(filteredLeads);
-          // Update filtered leads with same filter
+          // If the date doesn't match the 3-day threshold or status is completed/cancelled,
+          // remove it from contactLeads if it's there
+          const filteredContactLeadsData = contactLeads.filter(lead => lead.id !== leadId);
+          setContactLeads(filteredContactLeadsData);
+          
+          // Update filtered leads
           if (searchTerm.trim() === '') {
-            setFilteredContactLeads(filteredLeads);
+            setFilteredContactLeads(filteredContactLeadsData);
           } else {
             const lowerCaseSearch = searchTerm.toLowerCase();
-            setFilteredContactLeads(filteredLeads.filter(lead => 
+            setFilteredContactLeads(filteredContactLeadsData.filter(lead => 
               lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
               lead.service_provider_name.toLowerCase().includes(lowerCaseSearch)
             ));
@@ -318,9 +364,27 @@ export default function HomePage() {
           // Get the target date for 3 days from now
           const targetDate = getThreeDayTargetDate();
           
-          // Check if the lead's date matches the target date
-          const isExactlyThreeDays = updatedLead.service_start_date === targetDate;
-          console.log(`Date changed for lead ${leadId}: ${updatedLead.service_start_date}, matches 3-day target: ${isExactlyThreeDays}`);
+          // Compare the date strings
+          const matchesDate = updatedLead.service_start_date === targetDate;
+          
+          // Also check day differences
+          const leadDate = new Date(updatedLead.service_start_date);
+          leadDate.setHours(0, 0, 0, 0);
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Calculate difference in days
+          const diffTime = leadDate.getTime() - today.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          
+          // Check if the difference is 3 days
+          const isThreeDaysAway = diffDays === 3;
+          
+          // Check if this lead should be in contactLeads
+          const isExactlyThreeDays = matchesDate || isThreeDaysAway;
+          
+          console.log(`Date changed for lead ${leadId}: ${updatedLead.service_start_date}, matches 3-day target: ${isExactlyThreeDays}, days difference: ${diffDays}`);
           
           // Update contactLeads
           if (isExactlyThreeDays && 
@@ -593,26 +657,10 @@ export default function HomePage() {
         {/* Leads to Contact Section */}
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
-            <h1 className="text-3xl font-semibold text-gray-900">
-              Leads to Contact
-              <span className="ml-2 text-lg font-normal text-indigo-600">
-                ({(() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const threeDaysFromNow = new Date(today);
-                  threeDaysFromNow.setDate(today.getDate() + 3);
-                  return threeDaysFromNow.toLocaleDateString();
-                })()})
-              </span>
-            </h1>
+            <h1 className="text-3xl font-semibold text-gray-900">Leads to Contact</h1>
             <p className="mt-2 text-sm text-gray-700">
-              These leads have services scheduled in exactly 3 days and may require customer reminders
+              Leads with service scheduled in exactly 3 days from now
             </p>
-            {contactLeads.length > 0 && (
-              <p className="mt-2 text-sm font-medium text-indigo-600">
-                Found {contactLeads.length} lead(s) requiring contact
-              </p>
-            )}
           </div>
           <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex space-x-2">
             {/* Search input */}
@@ -684,37 +732,14 @@ export default function HomePage() {
                       filteredContactLeads.map((lead) => renderLeadRow(lead))
                     ) : searchTerm.trim() !== '' && contactLeads.length > 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-8 text-center">
-                          <div className="text-gray-500">
-                            <p className="text-lg font-medium">No leads found matching "{searchTerm}"</p>
-                            <p className="mt-1">Try adjusting your search term</p>
-                          </div>
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
+                          No leads found matching "{searchTerm}"
                         </td>
                       </tr>
                     ) : (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center">
-                          <div className="text-gray-500">
-                            <p className="text-lg font-medium">No leads requiring contact</p>
-                            <p className="mt-1">
-                              There are no leads scheduled for {
-                                (() => {
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  const threeDaysFromNow = new Date(today);
-                                  threeDaysFromNow.setDate(today.getDate() + 3);
-                                  return threeDaysFromNow.toLocaleDateString();
-                                })()
-                              } that need customer reminders
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => router.push('/dashboard/leads/new')}
-                              className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                            >
-                              Add New Lead
-                            </button>
-                          </div>
+                        <td colSpan={9} className="py-4 text-center text-sm text-gray-500">
+                          No leads to contact found for 3 days from now
                         </td>
                       </tr>
                     )}
