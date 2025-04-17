@@ -102,18 +102,19 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     handled_by: "Waiyee"
   },
   {
-    customer_name: "Victoria Testing",
-    customer_contact: "555-678-9012",
-    service_provider_name: "Test Provider",
-    service_provider_contact: "555-432-1098",
+    customer_name: "Victoria-Testing",
+    customer_contact: "555-123-4567",
+    service_provider_name: "Best Pet Care",
+    service_provider_contact: "555-987-6543",
     service_start_date: (() => {
       // Calculate exactly 3 days from now
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const threeDaysFromNow = new Date(today);
       threeDaysFromNow.setDate(today.getDate() + 3);
+      console.log("Created test lead for date:", threeDaysFromNow.toISOString().split('T')[0]);
       return threeDaysFromNow.toISOString().split('T')[0];
-    })(), // Execute the function immediately
+    })(), 
     service_end_date: (() => {
       // Calculate exactly 4 days from now
       const today = new Date();
@@ -122,11 +123,11 @@ const initialLeads: Omit<Lead, 'id'>[] = [
       fourDaysFromNow.setDate(today.getDate() + 4);
       return fourDaysFromNow.toISOString().split('T')[0];
     })(),
-    service_start_time: "10:00",
-    service_end_time: "16:00",
-    notes: "This is a test lead that should appear in Leads to Contact",
-    total_price: 75,
-    status: "Pending Service",
+    service_start_time: "09:00",
+    service_end_time: "17:00",
+    notes: "Dog needs special diet - premium food only",
+    total_price: 150,
+    status: "Send Reminder",
     created_at: new Date().toISOString()
   }
 ];
