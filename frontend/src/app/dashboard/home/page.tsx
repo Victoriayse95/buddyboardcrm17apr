@@ -56,63 +56,52 @@ export default function HomePage() {
     }
   }, [searchTerm, contactLeads]);
 
-  // Update useEffect for fetchLeads to also set filtered leads
+  // Update useEffect for fetchLeads with more precise date calculation
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Get the current date
+        // Get the current date and normalize to start of day
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Set to beginning of day
+        today.setHours(0, 0, 0, 0);
         
-        // Calculate the date 3 days from now
+        console.log("Today's date (normalized):", today.toISOString().split('T')[0]);
+        
+        // Calculate the date exactly 3 days from now
         const threeDaysFromNow = new Date(today);
         threeDaysFromNow.setDate(today.getDate() + 3);
         
-        // Format the date as YYYY-MM-DD
+        // Format the target date as YYYY-MM-DD
         const targetDate = threeDaysFromNow.toISOString().split('T')[0];
         
-        console.log("Target date for leads to contact:", targetDate);
+        console.log("Target date (exactly 3 days from today):", targetDate);
         
-        // Fetch leads from localStorage
+        // Fetch leads from localStorage or API
         const allLeads = await getLeads();
         
-        // Log all lead dates to debug
-        console.log("All leads service dates:", allLeads.map(lead => ({
-          id: lead.id,
-          customer: lead.customer_name,
-          date: lead.service_start_date,
-          targetDate: targetDate,
-          matches: lead.service_start_date === targetDate
-        })));
-        
-        // Leads to contact - exactly 3 days from now
+        // Filter leads scheduled exactly 3 days from now
         const leadsToContact = allLeads.filter(lead => {
-          const matches = lead.service_start_date === targetDate && lead.status !== "Completed";
+          // Check if date matches exactly and lead is not completed/cancelled
+          const matches = lead.service_start_date === targetDate && 
+                         lead.status !== "Completed" && 
+                         lead.status !== "Cancelled";
           
-          // For debugging purposes
-          if (lead.customer_name.toLowerCase().includes("testing") || lead.customer_name.toLowerCase().includes("victoria")) {
-            console.log("Testing lead date check:", {
-              leadName: lead.customer_name,
-              leadDate: lead.service_start_date,
-              targetDate: targetDate,
-              matches: matches
-            });
-          }
+          // Log all leads for debugging purposes
+          console.log(`Lead: ${lead.customer_name}, Date: ${lead.service_start_date}, Target: ${targetDate}, Matches: ${matches}`);
           
           return matches;
         });
         
-        console.log(`Found ${leadsToContact.length} leads for exactly 3 days from now:`, 
-          leadsToContact.map(l => l.customer_name));
+        console.log(`Found ${leadsToContact.length} leads scheduled for ${targetDate} (3 days from today):`, 
+          leadsToContact.map(lead => lead.customer_name));
         
         // Simulate API delay
         setTimeout(() => {
           setLeads(allLeads);
           setContactLeads(leadsToContact);
-          setFilteredContactLeads(leadsToContact); // Initialize filtered leads
+          setFilteredContactLeads(leadsToContact);
           setLoading(false);
         }, 500);
       } catch (error: any) {

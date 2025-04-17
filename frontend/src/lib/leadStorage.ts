@@ -106,8 +106,22 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     customer_contact: "555-678-9012",
     service_provider_name: "Test Provider",
     service_provider_contact: "555-432-1098",
-    service_start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Exactly 3 days from now
-    service_end_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    service_start_date: (() => {
+      // Calculate exactly 3 days from now
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threeDaysFromNow = new Date(today);
+      threeDaysFromNow.setDate(today.getDate() + 3);
+      return threeDaysFromNow.toISOString().split('T')[0];
+    })(), // Execute the function immediately
+    service_end_date: (() => {
+      // Calculate exactly 4 days from now
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const fourDaysFromNow = new Date(today);
+      fourDaysFromNow.setDate(today.getDate() + 4);
+      return fourDaysFromNow.toISOString().split('T')[0];
+    })(),
     service_start_time: "10:00",
     service_end_time: "16:00",
     notes: "This is a test lead that should appear in Leads to Contact",
