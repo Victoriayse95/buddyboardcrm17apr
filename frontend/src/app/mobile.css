@@ -1,0 +1,89 @@
+/* Mobile-specific styles for BuddyBoard */
+
+/* Base styles for better mobile display */
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS-specific fixes */
+.ios-device {
+  /* Fix for sticky hover effects on iOS */
+  * {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  
+  /* Use custom viewport height variable to fix 100vh issues */
+  .min-h-screen {
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  /* Better form elements on iOS */
+  input, select, textarea {
+    font-size: 16px;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+}
+
+/* Mobile-first responsive classes */
+@media (max-width: 640px) {
+  /* Improved touch targets */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem;
+    touch-action: manipulation;
+  }
+  
+  /* Fix for scrollable containers */
+  .overflow-auto, .overflow-x-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent fixed position issues with keyboard */
+  .fixed-bottom {
+    position: fixed !important;
+    bottom: env(safe-area-inset-bottom, 0);
+  }
+  
+  /* Safe area insets for notched devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0) !important;
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+  
+  /* Improve form display on mobile */
+  form {
+    width: 100%;
+  }
+  
+  /* Make grids stack on mobile */
+  .grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  
+  /* Fix header on mobile */
+  nav.bg-indigo-600 {
+    padding: 0.5rem 0;
+  }
+  
+  /* Fix avatar size for mobile */
+  .rounded-full.h-8.w-8 {
+    height: 2rem !important;
+    width: 2rem !important;
+  }
+} 
