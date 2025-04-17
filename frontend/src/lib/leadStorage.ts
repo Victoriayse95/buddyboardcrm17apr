@@ -378,4 +378,50 @@ export async function checkFirebaseConnectivity(): Promise<boolean> {
     console.error("Firebase connectivity test failed:", error);
     return false;
   }
+}
+
+// Function to check for leads that need reminders (3 days before service)
+// and update their status to "Send Reminder"
+export async function checkForLeadsRequiringReminders(): Promise<Lead[]> {
+  if (!isBrowser) return [];
+  
+  try {
+    // Get all leads
+    const allLeads = await getLeads();
+    
+    // Calculate the date that's exactly 3 days from now
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const threeDaysFromNow = new Date(today);
+    threeDaysFromNow.setDate(today.getDate() + 3);
+    const targetDate = threeDaysFromNow.toISOString().split('T')[0];
+    
+    console.log("Checking for leads requiring reminders for date:", targetDate);
+    
+    // Identify leads that need reminders (service in 3 days and not already in Send Reminder or Reminder Sent status)
+    const leadsNeedingReminders = allLeads.filter(lead => {
+      const matchesDate = lead.service_start_date === targetDate;
+      const validStatus = lead.status !== "Completed" && 
+                          lead.status !== "Cancelled" && 
+                          lead.status !== "Send Reminder" &&
+                          lead.status !== "Reminder Sent";
+      
+      return matchesDate && validStatus;
+    });
+    
+    console.log(`Found ${leadsNeedingReminders.length} leads requiring reminders`);
+    
+    // Update the status of these leads to "Send Reminder"
+    const updatedLeads = await Promise.all(
+      leadsNeedingReminders.map(async lead => {
+        const updatedLead = await updateLead(lead.id, { status: "Send Reminder" });
+        return updatedLead || lead;
+      })
+    );
+    
+    return updatedLeads;
+  } catch (error) {
+    console.error("Error checking for leads requiring reminders:", error);
+    return [];
+  }
 } 

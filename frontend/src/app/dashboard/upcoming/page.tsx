@@ -29,6 +29,7 @@ export default function UpcomingPage() {
   // Status options for dropdown
   const statusOptions = [
     "Send Reminder",
+    "Reminder Sent",
     "Pending Service",
     "Service In Progress",
     "Cancelled",

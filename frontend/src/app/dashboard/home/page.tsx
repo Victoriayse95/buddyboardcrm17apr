@@ -32,6 +32,7 @@ export default function HomePage() {
   // Status options for dropdown
   const statusOptions = [
     "Send Reminder",
+    "Reminder Sent",
     "Pending Service",
     "Service In Progress",
     "Cancelled",
@@ -167,6 +168,7 @@ export default function HomePage() {
   };
 
   // Update useEffect to fetch leads and properly filter for leads exactly 3 days away
+  // and set default "Send Reminder" status for matching leads
   useEffect(() => {
     const fetchLeads = async () => {
       try {
@@ -215,10 +217,22 @@ export default function HomePage() {
         
         console.log("Found leads to contact:", leadsToContact.length);
         
+        // Set default status to "Send Reminder" for leads in the contact list if they don't have it already
+        const updatedLeadsToContact = await Promise.all(
+          leadsToContact.map(async lead => {
+            // Only update if status is not already set to "Send Reminder" or "Reminder Sent"
+            if (lead.status !== "Send Reminder" && lead.status !== "Reminder Sent") {
+              const updatedLead = await updateLead(lead.id, { status: "Send Reminder" });
+              return updatedLead || lead;
+            }
+            return lead;
+          })
+        );
+        
         // Set state with all leads and filtered contact leads
         setLeads(fetchedLeads);
-        setContactLeads(leadsToContact);
-        setFilteredContactLeads(leadsToContact);
+        setContactLeads(updatedLeadsToContact);
+        setFilteredContactLeads(updatedLeadsToContact);
         setLoading(false);
         
       } catch (error: any) {
