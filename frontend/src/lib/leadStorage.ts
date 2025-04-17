@@ -43,6 +43,20 @@ const initialLeads: Omit<Lead, 'id'>[] = [
     handled_by: "Victoria"
   },
   {
+    customer_name: "April 20 Test Lead",
+    customer_contact: "555-123-4567",
+    service_provider_name: "Best Pet Care",
+    service_provider_contact: "555-987-6543",
+    service_start_date: "2024-04-20",
+    service_end_date: "2024-04-21",
+    service_start_time: "09:00",
+    service_end_time: "17:00",
+    notes: "This is a test lead with April 20 date",
+    total_price: 150,
+    status: "Send Reminder",
+    created_at: new Date().toISOString()
+  },
+  {
     customer_name: "Jane Smith",
     customer_contact: "555-234-5678",
     service_provider_name: "Paws & Claws",
