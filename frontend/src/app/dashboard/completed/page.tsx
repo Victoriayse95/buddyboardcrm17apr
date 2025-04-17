@@ -273,19 +273,97 @@ export default function CompletedPage() {
                       completedLeads.map((lead) => (
                         <tr key={lead.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                            {lead.customer_name}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'customer_name' ? (
+                              <input 
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.customer_name}
+                                onBlur={(e) => handleCellEdit(lead.id, 'customer_name', e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'customer_name'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">{lead.customer_name}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {lead.customer_contact}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'customer_contact' ? (
+                              <input 
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.customer_contact}
+                                onBlur={(e) => handleCellEdit(lead.id, 'customer_contact', e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'customer_contact'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">{lead.customer_contact}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {lead.service_provider_name}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'service_provider_name' ? (
+                              <input 
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.service_provider_name}
+                                onBlur={(e) => handleCellEdit(lead.id, 'service_provider_name', e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'service_provider_name'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">{lead.service_provider_name}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {formatDateDDMMYYYY(lead.service_start_date)}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'service_start_date' ? (
+                              <input 
+                                type="date"
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.service_start_date}
+                                onBlur={(e) => handleCellEdit(lead.id, 'service_start_date', e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'service_start_date'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">{formatDateDDMMYYYY(lead.service_start_date)}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            ${lead.total_price}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'total_price' ? (
+                              <input 
+                                type="number"
+                                step="0.01"
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.total_price}
+                                onBlur={(e) => handleCellEdit(lead.id, 'total_price', parseFloat(e.target.value))}
+                                autoFocus
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'total_price'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">${lead.total_price}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             <select
@@ -299,10 +377,46 @@ export default function CompletedPage() {
                             </select>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {lead.handled_by || 'Not assigned'}
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'handled_by' ? (
+                              <select
+                                className="w-full p-1 border rounded"
+                                defaultValue={lead.handled_by || ''}
+                                onBlur={(e) => handleCellEdit(lead.id, 'handled_by', e.target.value)}
+                                autoFocus
+                              >
+                                <option value="">Select handler</option>
+                                {handlerOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'handled_by'})}
+                              >
+                                <span className="flex-1 min-w-0 break-words">{lead.handled_by || 'Not assigned'}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
-                          <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
-                            {lead.notes}
+                          <td className="px-3 py-4 text-sm text-gray-500">
+                            {editingCell?.leadId === lead.id && editingCell?.field === 'notes' ? (
+                              <textarea 
+                                className="w-full p-1 border rounded" 
+                                defaultValue={lead.notes}
+                                onBlur={(e) => handleCellEdit(lead.id, 'notes', e.target.value)}
+                                autoFocus
+                                rows={3}
+                              />
+                            ) : (
+                              <div 
+                                className="group cursor-pointer hover:bg-blue-50 hover:text-blue-700 p-1 rounded border border-transparent hover:border-blue-200 flex" 
+                                onClick={() => setEditingCell({leadId: lead.id, field: 'notes'})}
+                              >
+                                <span className="flex-1 min-w-40 max-w-60 break-words">{lead.notes}</span>
+                                <PencilIcon className="h-3.5 w-3.5 ml-1 opacity-0 group-hover:opacity-100 text-blue-500 flex-shrink-0 self-start mt-1" />
+                              </div>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             <button
