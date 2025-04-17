@@ -56,20 +56,14 @@ export default function HomePage() {
     }
   }, [searchTerm, contactLeads]);
 
-  // Update useEffect to directly check and force April 20 lead
+  // Update useEffect to show all April 20 leads plus the test lead
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        console.log("Fetching leads and forcing April 20 test lead");
-        
-        // Force clear localStorage to reset data
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('buddyboard_leads');
-          console.log("Successfully cleared localStorage");
-        }
+        console.log("Fetching leads for April 20 display");
         
         // Create a direct April 20 test lead
         const april20Lead: Omit<Lead, 'id'> = {
@@ -87,25 +81,41 @@ export default function HomePage() {
           created_at: new Date().toISOString()
         };
         
-        // Create a modified array with our test lead
+        // Fetch all leads without clearing localStorage
         const allLeads = await getLeads();
         console.log("Original leads count:", allLeads.length);
         
-        // Create a direct lead with ID and manually add to array
+        // Create a direct lead with ID
         const testLeadWithId = {
           ...april20Lead,
           id: "test-april20-lead"
         };
         
-        // Use only the test lead for the contact leads section
-        const leadsToContact = [testLeadWithId];
-        console.log("Manually using April 20 test lead:", testLeadWithId);
+        // Find all other April 20 leads in the existing data
+        const existingApril20Leads = allLeads.filter(lead => 
+          lead.service_start_date === "2024-04-20" && 
+          lead.status !== "Completed" && 
+          lead.status !== "Cancelled"
+        );
+        
+        console.log(`Found ${existingApril20Leads.length} additional April 20 leads in storage`);
+        
+        // Combine our test lead with any existing April 20 leads
+        const allApril20Leads = [testLeadWithId, ...existingApril20Leads];
+        
+        console.log(`Total April 20 leads to display: ${allApril20Leads.length}`);
         
         // Set state with all leads + our test lead
         setTimeout(() => {
-          setLeads([...allLeads, testLeadWithId]);
-          setContactLeads(leadsToContact);
-          setFilteredContactLeads(leadsToContact);
+          // Add the test lead to the array if it's not already there
+          const combinedLeads = [...allLeads];
+          if (!allLeads.some(lead => lead.id === testLeadWithId.id)) {
+            combinedLeads.push(testLeadWithId);
+          }
+          
+          setLeads(combinedLeads);
+          setContactLeads(allApril20Leads);
+          setFilteredContactLeads(allApril20Leads);
           setLoading(false);
         }, 500);
       } catch (error: any) {
