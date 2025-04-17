@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead } from '@/lib/leadStorage';
+import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function AllLeadsPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function AllLeadsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{leadId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
 
   // Status options for dropdown (matching dashboard page)
   const statusOptions = [
@@ -31,20 +32,14 @@ export default function AllLeadsPage() {
         setLoading(true);
         setError(null);
         
-        // Fetch leads from localStorage
-        const storedLeads = getLeads();
+        // Seed initial data if needed (will only run if collection is empty)
+        await seedInitialData();
         
-        // Simulate API delay
-        setTimeout(() => {
-          setLeads(storedLeads);
-          setFilteredLeads(storedLeads);
-          setLoading(false);
-        }, 500);
-        
-        /* Temporarily comment out the actual API call
-        const response = await api.get('/services/');
-        setLeads(response.data);
-        */
+        // Fetch leads from Firestore
+        const fetchedLeads = await getLeads();
+        setLeads(fetchedLeads);
+        setFilteredLeads(fetchedLeads);
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
         setError('Failed to load leads. Please try again later.');
@@ -70,10 +65,10 @@ export default function AllLeadsPage() {
     }
   }, [searchTerm, leads]);
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      // Update the lead in local storage
-      const updatedLead = updateLead(leadId, { status: newStatus });
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { status: newStatus });
       if (updatedLead) {
         // Update the state with the new data
         const updatedLeads = leads.map(lead => 
@@ -93,42 +88,40 @@ export default function AllLeadsPage() {
           ));
         }
       }
-      
-      /* Temporarily comment out the actual API call
-      await api.patch(`/services/${leadId}/`, { status: newStatus });
-      */
     } catch (error) {
       console.error('Error updating lead status:', error);
       alert('Failed to update lead status. Please try again.');
     }
   };
   
-  const handleCellEdit = (leadId: number, field: string, value: string | number) => {
-    // Update the lead in localStorage
-    const updatedLead = updateLead(leadId, { [field]: value });
-    
-    if (updatedLead) {
-      // Update the state with the new data
-      const updatedLeads = leads.map(lead => 
-        lead.id === leadId ? updatedLead : lead
-      );
-      setLeads(updatedLeads);
+  const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
+    try {
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { [field]: value });
       
-      // Update filtered leads
-      if (searchTerm.trim() === '') {
-        setFilteredLeads(updatedLeads);
-      } else {
-        const lowerCaseSearch = searchTerm.toLowerCase();
-        setFilteredLeads(updatedLeads.filter(lead => 
-          lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
-          lead.service_provider_name.toLowerCase().includes(lowerCaseSearch) ||
-          lead.status.toLowerCase().includes(lowerCaseSearch)
-        ));
+      if (updatedLead) {
+        // Update the state with the new data
+        const updatedLeads = leads.map(lead => 
+          lead.id === leadId ? updatedLead : lead
+        );
+        setLeads(updatedLeads);
+        
+        // Update filtered leads
+        if (searchTerm.trim() === '') {
+          setFilteredLeads(updatedLeads);
+        } else {
+          const lowerCaseSearch = searchTerm.toLowerCase();
+          setFilteredLeads(updatedLeads.filter(lead => 
+            lead.customer_name.toLowerCase().includes(lowerCaseSearch) ||
+            lead.service_provider_name.toLowerCase().includes(lowerCaseSearch) ||
+            lead.status.toLowerCase().includes(lowerCaseSearch)
+          ));
+        }
       }
+    } catch (error) {
+      console.error(`Error updating lead ${leadId}, field ${field}:`, error);
+      alert('Failed to update lead. Please try again.');
     }
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
     
     // Close the editing cell
     setEditingCell(null);
@@ -139,7 +132,7 @@ export default function AllLeadsPage() {
       <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <LoadingSpinner size="lg" />
           </div>
         </div>
       </div>

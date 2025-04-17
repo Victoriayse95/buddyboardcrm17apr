@@ -7,6 +7,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import toast from 'react-hot-toast';
 import { addLead } from '@/lib/leadStorage';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface FormData {
   customer_name: string;
@@ -57,8 +58,8 @@ export default function NewLeadPage() {
     try {
       setLoading(true);
       
-      // Add the new lead to localStorage
-      const newLead = addLead({
+      // Add the new lead to Firestore
+      const newLead = await addLead({
         customer_name: data.customer_name,
         customer_contact: data.customer_contact,
         service_provider_name: data.provider_name,
@@ -71,15 +72,9 @@ export default function NewLeadPage() {
         total_price: data.total_price
       });
       
-      // Simulate a delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      /* Temporarily comment out actual API call
-      await api.post('/services/', {
-        ...data,
-        status: 'pending',
-      });
-      */
+      if (!newLead) {
+        throw new Error('Failed to create lead');
+      }
       
       toast.success('New lead created successfully');
       router.push('/dashboard/leads'); // Redirect to All Leads page instead of dashboard
@@ -90,6 +85,15 @@ export default function NewLeadPage() {
       setLoading(false);
     }
   };
+
+  const submitButtonContent = loading ? (
+    <div className="flex items-center justify-center">
+      <LoadingSpinner size="sm" />
+      <span className="ml-2">Creating...</span>
+    </div>
+  ) : (
+    'Create Lead'
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
@@ -282,9 +286,9 @@ export default function NewLeadPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
-                  {loading ? 'Creating...' : 'Create Lead'}
+                  {submitButtonContent}
                 </button>
               </div>
             </form>

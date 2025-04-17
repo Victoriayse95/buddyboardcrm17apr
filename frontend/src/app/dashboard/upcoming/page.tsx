@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, Lead } from '@/lib/leadStorage';
+import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
 import { PencilIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -14,7 +14,7 @@ export default function UpcomingPage() {
   const [upcomingLeads, setUpcomingLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<{leadId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{leadId: string, field: string} | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -38,11 +38,14 @@ export default function UpcomingPage() {
         setLoading(true);
         setError(null);
         
+        // Seed initial data if needed
+        await seedInitialData();
+        
         // Get the current date
         const now = new Date().getTime();
         
-        // Fetch leads from localStorage
-        const allLeads = getLeads();
+        // Fetch leads from Firestore
+        const allLeads = await getLeads();
         
         // Upcoming leads - future services that haven't been completed
         const upcoming = allLeads.filter(lead => {
@@ -50,12 +53,9 @@ export default function UpcomingPage() {
           return startDate >= now && lead.status !== "Completed" && lead.status !== "Cancelled";
         });
         
-        // Simulate API delay
-        setTimeout(() => {
-          setLeads(allLeads);
-          setUpcomingLeads(upcoming);
-          setLoading(false);
-        }, 500);
+        setLeads(allLeads);
+        setUpcomingLeads(upcoming);
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching leads:', error);
         setError('Failed to load leads. Please try again later.');
@@ -66,10 +66,10 @@ export default function UpcomingPage() {
     fetchLeads();
   }, []);
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      // Update the lead in localStorage
-      const updatedLead = updateLead(leadId, { status: newStatus });
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { status: newStatus });
       
       if (updatedLead) {
         // Update the leads state
@@ -100,38 +100,40 @@ export default function UpcomingPage() {
     }
   };
   
-  const handleCellEdit = (leadId: number, field: string, value: string | number) => {
-    // Update the lead in localStorage
-    const updatedLead = updateLead(leadId, { [field]: value });
-    
-    if (updatedLead) {
-      // Update the leads state
-      setLeads(leads.map(lead => 
-        lead.id === leadId ? updatedLead : lead
-      ));
+  const handleCellEdit = async (leadId: string, field: string, value: string | number) => {
+    try {
+      // Update the lead in Firestore
+      const updatedLead = await updateLead(leadId, { [field]: value });
       
-      // Update in upcomingLeads if present
-      if (upcomingLeads.some(lead => lead.id === leadId)) {
-        setUpcomingLeads(upcomingLeads.map(lead => 
+      if (updatedLead) {
+        // Update the leads state
+        setLeads(leads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         ));
-      }
-      
-      // If date fields were changed, we need to potentially move the lead between tables
-      if (field === 'service_start_date') {
-        // Recalculate which table this lead should appear in
-        const now = new Date().getTime();
-        const startDate = new Date(updatedLead.service_start_date).getTime();
         
-        // If the date is no longer in the future, remove from upcoming
-        if (startDate < now) {
-          setUpcomingLeads(upcomingLeads.filter(lead => lead.id !== leadId));
+        // Update in upcomingLeads if present
+        if (upcomingLeads.some(lead => lead.id === leadId)) {
+          setUpcomingLeads(upcomingLeads.map(lead => 
+            lead.id === leadId ? updatedLead : lead
+          ));
+        }
+        
+        // If date fields were changed, we need to potentially move the lead between tables
+        if (field === 'service_start_date') {
+          // Recalculate which table this lead should appear in
+          const now = new Date().getTime();
+          const startDate = new Date(updatedLead.service_start_date).getTime();
+          
+          // If the date is no longer in the future, remove from upcoming
+          if (startDate < now) {
+            setUpcomingLeads(upcomingLeads.filter(lead => lead.id !== leadId));
+          }
         }
       }
+    } catch (error) {
+      console.error(`Error updating lead ${leadId}, field ${field}:`, error);
+      alert('Failed to update lead. Please try again.');
     }
-    
-    // In a real app, you would make an API call to update the backend
-    console.log(`Updated lead ${leadId}, field ${field} to ${value}`);
     
     // Close the editing cell
     setEditingCell(null);

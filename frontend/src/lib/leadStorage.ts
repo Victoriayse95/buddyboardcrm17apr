@@ -1,6 +1,12 @@
 // Lead interface definition
+import { db } from './firebase';
+import {
+  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy, serverTimestamp, Timestamp, DocumentReference, DocumentData
+} from 'firebase/firestore';
+
 export interface Lead {
-  id: number;
+  id: string; // Changed from number to string for Firestore document IDs
   customer_name: string;
   customer_contact: string;
   service_provider_name: string;
@@ -16,10 +22,9 @@ export interface Lead {
   handled_by?: string;
 }
 
-// Initial mock data
-const initialLeads: Lead[] = [
+// Initial mock data - we'll use this if we need to seed the database
+const initialLeads: Omit<Lead, 'id'>[] = [
   {
-    id: 1,
     customer_name: "John Doe",
     customer_contact: "555-123-4567",
     service_provider_name: "Best Pet Care",
@@ -31,11 +36,10 @@ const initialLeads: Lead[] = [
     notes: "Dog needs special diet - premium food only",
     total_price: 150,
     status: "Send Reminder",
-    created_at: "2023-06-01T10:30:00Z",
+    created_at: new Date().toISOString(),
     handled_by: "Victoria"
   },
   {
-    id: 2,
     customer_name: "Jane Smith",
     customer_contact: "555-234-5678",
     service_provider_name: "Paws & Claws",
@@ -51,7 +55,6 @@ const initialLeads: Lead[] = [
     handled_by: "Waiyee"
   },
   {
-    id: 3,
     customer_name: "Robert Johnson",
     customer_contact: "555-345-6789",
     service_provider_name: "Happy Pets",
@@ -67,7 +70,6 @@ const initialLeads: Lead[] = [
     handled_by: "Victoria"
   },
   {
-    id: 4,
     customer_name: "Emily Wilson",
     customer_contact: "555-456-7890",
     service_provider_name: "Pet Paradise",
@@ -82,7 +84,6 @@ const initialLeads: Lead[] = [
     created_at: "2023-06-03T16:20:00Z"
   },
   {
-    id: 5,
     customer_name: "Michael Brown",
     customer_contact: "555-567-8901",
     service_provider_name: "Animal Care",
@@ -99,72 +100,110 @@ const initialLeads: Lead[] = [
   }
 ];
 
-const STORAGE_KEY = 'buddyboard_leads';
-
 // Function to get all leads
-export function getLeads(): Lead[] {
-  if (typeof window === 'undefined') {
-    return initialLeads; // Return mock data when running server-side
+export async function getLeads(): Promise<Lead[]> {
+  try {
+    const leadsRef = collection(db, 'leads');
+    const querySnapshot = await getDocs(leadsRef);
+    
+    if (querySnapshot.empty) {
+      // If no leads in Firestore, we could seed them, but we'll return empty array for now
+      return [];
+    }
+    
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        created_at: data.created_at ? new Date(data.created_at.seconds * 1000).toISOString() : new Date().toISOString()
+      } as Lead;
+    });
+  } catch (error) {
+    console.error("Error getting leads:", error);
+    return [];
   }
-  
-  const storedLeads = localStorage.getItem(STORAGE_KEY);
-  
-  if (!storedLeads) {
-    // Initialize with mock data if no data exists
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialLeads));
-    return initialLeads;
-  }
-  
-  return JSON.parse(storedLeads);
 }
 
 // Function to add a new lead
-export function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>): Lead {
-  const leads = getLeads();
-  
-  // Generate a new ID by finding the max ID and adding 1
-  const maxId = Math.max(...leads.map(l => l.id), 0);
-  const newId = maxId + 1;
-  
-  // Create new lead with ID, timestamp, and default status
-  const newLead: Lead = {
-    ...lead,
-    id: newId,
-    status: 'Pending Service',
-    created_at: new Date().toISOString()
-  };
-  
-  // Add to existing leads and save
-  const updatedLeads = [...leads, newLead];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedLeads));
-  
-  return newLead;
+export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>): Promise<Lead | null> {
+  try {
+    const leadsRef = collection(db, 'leads');
+    
+    // Create new lead with timestamp and default status
+    const newLead = {
+      ...lead,
+      status: 'Pending Service',
+      created_at: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(leadsRef, newLead);
+    
+    return {
+      id: docRef.id,
+      ...lead,
+      status: 'Pending Service',
+      created_at: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error adding lead:", error);
+    return null;
+  }
 }
 
 // Function to update a lead
-export function updateLead(id: number, updates: Partial<Lead>): Lead | null {
-  const leads = getLeads();
-  const leadIndex = leads.findIndex(lead => lead.id === id);
-  
-  if (leadIndex === -1) return null;
-  
-  // Update the lead
-  const updatedLead = { ...leads[leadIndex], ...updates };
-  leads[leadIndex] = updatedLead;
-  
-  // Save changes
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
-  
-  return updatedLead;
+export async function updateLead(id: string, updates: Partial<Lead>): Promise<Lead | null> {
+  try {
+    const leadRef = doc(db, 'leads', id);
+    
+    // Remove id from updates if it exists
+    const { id: _, ...updatesWithoutId } = updates;
+    
+    // Update the lead in Firestore
+    await updateDoc(leadRef, updatesWithoutId);
+    
+    // Get the updated lead
+    const updatedLeads = await getLeads();
+    return updatedLeads.find(lead => lead.id === id) || null;
+  } catch (error) {
+    console.error("Error updating lead:", error);
+    return null;
+  }
 }
 
 // Function to delete a lead
-export function deleteLead(id: number): boolean {
-  const leads = getLeads();
-  const filteredLeads = leads.filter(lead => lead.id !== id);
-  
-  if (filteredLeads.length === leads.length) return false;
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredLeads));
-  return true;
+export async function deleteLead(id: string): Promise<boolean> {
+  try {
+    const leadRef = doc(db, 'leads', id);
+    await deleteDoc(leadRef);
+    return true;
+  } catch (error) {
+    console.error("Error deleting lead:", error);
+    return false;
+  }
+}
+
+// Function to seed initial data (use only once)
+export async function seedInitialData(): Promise<void> {
+  try {
+    const leadsRef = collection(db, 'leads');
+    const querySnapshot = await getDocs(leadsRef);
+    
+    // Only seed if collection is empty
+    if (querySnapshot.empty) {
+      console.log("Seeding initial lead data...");
+      
+      // Add each initial lead
+      for (const lead of initialLeads) {
+        await addDoc(leadsRef, {
+          ...lead,
+          created_at: serverTimestamp()
+        });
+      }
+      
+      console.log("Seeding complete!");
+    }
+  } catch (error) {
+    console.error("Error seeding data:", error);
+  }
 } 

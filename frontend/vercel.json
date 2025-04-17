@@ -1,0 +1,15 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyD4y1ggPILUfhN5G8bmxnjwA1VSolDSFpY",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "buddyboardcrm-e9ac6.firebaseapp.com",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "buddyboardcrm-e9ac6",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "buddyboardcrm-e9ac6.appspot.com",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "316187712776",
+    "NEXT_PUBLIC_FIREBASE_APP_ID": "1:316187712776:web:05c56c8ed01e1f6f1bada4",
+    "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-NH4WHEGQPS"
+  }
+} 
