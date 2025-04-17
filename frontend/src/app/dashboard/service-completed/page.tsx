@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircleIcon, ClockIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { formatDate, formatDateDDMMYYYY } from '@/utils/format';
+import { formatDateDDMMYYYY } from '@/utils/format';
 import TableHeader from '@/components/TableHeader';
-import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
+import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, FilterOption } from '@/utils/tableUtils';
 import { exportDataToExcel } from '@/utils/exportUtils';
 
 interface CompletedService {
@@ -20,18 +20,6 @@ interface CompletedService {
   notes: string;
   rating?: number;
   feedback?: string;
-}
-
-interface CompletedServicesPageState {
-  services: CompletedService[];
-  loading: boolean;
-  error: string | null;
-  editingCell: { serviceId: string; field: string } | null;
-  sortField: string;
-  sortDirection: SortDirection;
-  activeFilters: ActiveFilters;
-  searchTerm: string;
-  displayedServices: CompletedService[];
 }
 
 export default function CompletedServicesPage() {
@@ -96,62 +84,85 @@ export default function CompletedServicesPage() {
     }));
   };
 
-  // Apply sorting and filtering when relevant states change
+  // Add formatDateForFilter function at the top level of the component
+  const formatDateForFilter = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', { 
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
+  // Apply filtering and sorting whenever services, filters, or sort criteria change
   useEffect(() => {
-    // Apply filtering, sorting and searching to the services
+    if (!services) return;
+
     let filtered = [...services];
 
     // Apply search term filtering
-    if (searchTerm.trim()) {
+    if (searchTerm && searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(service => 
-        service.customer_name.toLowerCase().includes(term) ||
-        service.customer_contact.toLowerCase().includes(term) ||
-        service.service_provider_name.toLowerCase().includes(term) ||
-        service.service_type.toLowerCase().includes(term) ||
-        (service.notes && service.notes.toLowerCase().includes(term))
+        (service.customer_name?.toLowerCase().includes(term) || false) ||
+        (service.customer_contact?.toLowerCase().includes(term) || false) ||
+        (service.service_provider_name?.toLowerCase().includes(term) || false) ||
+        (service.service_type?.toLowerCase().includes(term) || false) ||
+        (service.notes?.toLowerCase().includes(term) || false)
       );
     }
 
     // Apply active filters
     Object.entries(activeFilters).forEach(([field, values]) => {
-      if (values.length) {
-        if (field === 'completion_date_month') {
-          filtered = filtered.filter(service => {
-            const date = new Date(service.completion_date);
-            const month = date.toLocaleString('default', { month: 'long' });
-            return values.includes(month);
-          });
-        } else {
-          filtered = filtered.filter(service => values.includes(String(service[field as keyof CompletedService])));
-        }
+      if (Array.isArray(values) && values.length > 0) {
+        filtered = filtered.filter(service => {
+          const serviceValue = service[field as keyof CompletedService];
+          if (field === 'service_start_date' || field === 'service_end_date') {
+            if (typeof serviceValue === 'string') {
+              const formattedDate = formatDateForFilter(serviceValue);
+              return values.includes(formattedDate);
+            }
+            return false;
+          }
+          // Make sure we only include values that are strings or can be converted to strings
+          if (serviceValue === undefined) return false;
+          return values.includes(String(serviceValue));
+        });
       }
     });
 
     // Apply sorting
-    filtered.sort((a, b) => {
-      const fieldA = a[sortField as keyof CompletedService];
-      const fieldB = b[sortField as keyof CompletedService];
-      
-      if (typeof fieldA === 'string' && typeof fieldB === 'string') {
-        return sortDirection === 'asc' 
-          ? fieldA.localeCompare(fieldB) 
-          : fieldB.localeCompare(fieldA);
-      }
-      
-      if (typeof fieldA === 'number' && typeof fieldB === 'number') {
-        return sortDirection === 'asc' ? fieldA - fieldB : fieldB - fieldA;
-      }
-      
-      // Handle dates
-      if (sortField === 'completion_date') {
-        const dateA = new Date(a.completion_date).getTime();
-        const dateB = new Date(b.completion_date).getTime();
-        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-      }
-      
-      return 0;
-    });
+    if (sortField) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortField as keyof CompletedService];
+        const bValue = b[sortField as keyof CompletedService];
+
+        // Handle sorting for dates
+        if (sortField === 'service_start_date' || sortField === 'service_end_date') {
+          const aDate = aValue !== undefined ? new Date(String(aValue)).getTime() : 0;
+          const bDate = bValue !== undefined ? new Date(String(bValue)).getTime() : 0;
+          return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
+        }
+
+        // Handle sorting for strings and other types
+        if (aValue === bValue) return 0;
+        if (aValue === undefined) return sortDirection === 'asc' ? 1 : -1;
+        if (bValue === undefined) return sortDirection === 'asc' ? -1 : 1;
+
+        // Handle numeric values
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+
+        // Safe string conversion and comparison
+        const aString = String(aValue || '');
+        const bString = String(bValue || '');
+        
+        return sortDirection === 'asc'
+          ? aString.localeCompare(bString)
+          : bString.localeCompare(aString);
+      });
+    }
 
     setDisplayedServices(filtered);
   }, [services, activeFilters, sortField, sortDirection, searchTerm]);
@@ -364,7 +375,7 @@ export default function CompletedServicesPage() {
       </div>
       
       {/* Search bar */}
-      <div className="mt-4 flex">
+      <div className="flex justify-between my-4">
         <div className="relative flex-1 max-w-sm">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -377,22 +388,22 @@ export default function CompletedServicesPage() {
             className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           />
         </div>
-      </div>
-
-      <div className="mt-1 mb-2 flex items-center">
+        
         {Object.keys(activeFilters).length > 0 && (
           <button
             type="button"
             onClick={() => setActiveFilters({})}
-            className="flex items-center text-xs text-indigo-600 hover:text-indigo-900"
+            className="ml-2 flex items-center text-xs text-indigo-600 hover:text-indigo-900"
           >
             <span>Clear Filters</span>
             <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-              {Object.values(activeFilters).reduce((total, values) => total + values.length, 0)}
+              {Object.values(activeFilters).reduce((total, values) => 
+                total + (Array.isArray(values) ? values.length : 0), 0)}
             </span>
           </button>
         )}
       </div>
+
       <div className="mt-8 flex flex-col">
         <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
