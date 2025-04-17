@@ -247,13 +247,13 @@ export default function ArchivedPage() {
     setEditingCell(null);
   };
 
-  // Add a function to get status-based styling
+  // Update the getStatusStyling function to use a better approach for the indicator
   const getStatusStyling = (status: string) => {
     if (status === "Send Reminder") {
       return {
-        rowClass: "bg-amber-50",
+        rowClass: "bg-amber-50 border-l-4 border-amber-500",
         textClass: "font-semibold text-amber-700",
-        indicatorClass: "absolute left-0 w-1 h-full bg-amber-500"
+        indicatorClass: "" // We'll use border-left instead of a separate div
       };
     }
     return {
@@ -263,16 +263,13 @@ export default function ArchivedPage() {
     };
   };
 
-  // Update the renderLeadRow function to add visual indicators for "Send Reminder" status
+  // Update the renderLeadRow function to use border-left instead of a separate div
   const renderLeadRow = (lead: Lead) => {
     const statusStyle = getStatusStyling(lead.status);
     
     return (
-      <tr key={lead.id} className={`relative ${statusStyle.rowClass}`}>
-        {/* Add vertical indicator bar for reminder status */}
-        {lead.status === "Send Reminder" && (
-          <div className={statusStyle.indicatorClass}></div>
-        )}
+      <tr key={lead.id} className={`${statusStyle.rowClass}`}>
+        {/* Remove the vertical indicator div that was pushing content right */}
         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
           {editingCell?.leadId === lead.id && editingCell?.field === 'customer_name' ? (
             <input 
