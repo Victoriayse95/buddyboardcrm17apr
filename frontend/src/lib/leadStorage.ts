@@ -103,8 +103,13 @@ const initialLeads: Omit<Lead, 'id'>[] = [
 // LocalStorage helper functions
 const LOCAL_STORAGE_KEY = 'buddyboard_leads';
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 // Initialize local storage with mock data if empty
 function initLocalStorage(): void {
+  if (!isBrowser) return;
+  
   const leadsFromStorage = localStorage.getItem(LOCAL_STORAGE_KEY);
   
   if (!leadsFromStorage) {
@@ -118,6 +123,8 @@ function initLocalStorage(): void {
 
 // Get leads from local storage
 function getLeadsFromLocalStorage(): Lead[] {
+  if (!isBrowser) return [];
+  
   initLocalStorage();
   const leadsFromStorage = localStorage.getItem(LOCAL_STORAGE_KEY);
   return leadsFromStorage ? JSON.parse(leadsFromStorage) : [];
@@ -125,6 +132,8 @@ function getLeadsFromLocalStorage(): Lead[] {
 
 // Save leads to local storage
 function saveLeadsToLocalStorage(leads: Lead[]): void {
+  if (!isBrowser) return;
+  
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leads));
 }
 
@@ -252,6 +261,8 @@ export async function deleteLead(id: string): Promise<boolean> {
 
 // Function to seed initial data (use only once)
 export async function seedInitialData(): Promise<void> {
+  if (!isBrowser) return;
+  
   try {
     const leadsRef = collection(db, 'leads');
     const querySnapshot = await getDocs(leadsRef);
@@ -277,5 +288,7 @@ export async function seedInitialData(): Promise<void> {
   }
 }
 
-// Initialize localStorage on module import
-initLocalStorage(); 
+// Initialize localStorage on module import, but only in browser
+if (isBrowser) {
+  initLocalStorage();
+} 
