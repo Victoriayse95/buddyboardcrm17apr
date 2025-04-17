@@ -6,6 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
 import { PencilIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ExportButton from '@/components/ExportButton';
+import { exportLeadsToExcel } from '@/utils/exportUtils';
+import { toast } from 'react-hot-toast';
 
 export default function UpcomingPage() {
   const router = useRouter();
@@ -137,6 +140,17 @@ export default function UpcomingPage() {
     
     // Close the editing cell
     setEditingCell(null);
+  };
+
+  // Add a function to handle the export
+  const handleExport = () => {
+    try {
+      exportLeadsToExcel(upcomingLeads, 'upcoming-tasks');
+      toast.success('Upcoming tasks exported successfully');
+    } catch (error) {
+      console.error('Error exporting tasks:', error);
+      toast.error('Failed to export tasks. Please try again.');
+    }
   };
 
   const renderLeadRow = (lead: Lead) => (
@@ -326,7 +340,11 @@ export default function UpcomingPage() {
               All upcoming tasks that haven't been completed or cancelled
             </p>
           </div>
-          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex space-x-2">
+            <ExportButton 
+              onClick={handleExport} 
+              disabled={upcomingLeads.length === 0}
+            />
             <button
               type="button"
               onClick={() => router.push('/dashboard/leads/new')}

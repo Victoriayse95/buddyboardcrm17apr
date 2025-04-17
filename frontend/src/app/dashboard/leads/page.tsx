@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLeads, updateLead, Lead, seedInitialData } from '@/lib/leadStorage';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ExportButton from '@/components/ExportButton';
+import { exportLeadsToExcel } from '@/utils/exportUtils';
+import { toast } from 'react-hot-toast';
 
 export default function AllLeadsPage() {
   const router = useRouter();
@@ -127,6 +130,18 @@ export default function AllLeadsPage() {
     setEditingCell(null);
   };
 
+  // Add a function to handle the export
+  const handleExport = () => {
+    try {
+      // Export the filtered leads (or all leads if no filter is applied)
+      exportLeadsToExcel(filteredLeads, 'all-leads');
+      toast.success('Leads exported successfully');
+    } catch (error) {
+      console.error('Error exporting leads:', error);
+      toast.error('Failed to export leads. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
@@ -181,6 +196,10 @@ export default function AllLeadsPage() {
                 </button>
               )}
             </div>
+            <ExportButton 
+              onClick={handleExport} 
+              disabled={filteredLeads.length === 0}
+            />
             <button
               type="button"
               onClick={() => router.push('/dashboard/leads/new')}
