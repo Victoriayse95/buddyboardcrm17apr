@@ -53,10 +53,14 @@ export default function LoginPage() {
   const onRegisterSubmit = async (data: { displayName: string; email: string; password: string }) => {
     try {
       setLoading(true);
+      console.log("Starting registration process...");
+      console.log("Registration data:", { email: data.email, displayName: data.displayName, passwordLength: data.password.length });
+      
       await registerUser(data.email, data.password, data.displayName);
       
       // After successful registration, automatically try to log in
       try {
+        console.log("Registration successful, attempting auto-login");
         await login(data.email, data.password);
         toast.success('Registration successful! You are now logged in.');
         router.push('/dashboard');
@@ -69,6 +73,7 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error('Registration error details:', error);
+      console.error('Error object:', JSON.stringify(error, null, 2));
       let errorMessage = error.message || 'Registration failed. Please try again.';
       
       // Show the actual Firebase error code to help debugging

@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { getUserProfile, initializeUserProfile, UserProfile } from '@/lib/userProfile';
 import { toast } from 'react-hot-toast';
+import { app } from '@/lib/firebase';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -125,8 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log(`Attempting to register new user: ${email} with display name: ${displayName}`);
+      console.log("Firebase auth instance:", auth ? "exists" : "undefined");
+      console.log("Firebase config loaded:", app ? "yes" : "no");
       
       // Create new user with Firebase
+      console.log("Calling createUserWithEmailAndPassword...");
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const newUser = userCredential.user;
       console.log(`User created successfully with UID: ${newUser.uid}`);
@@ -153,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Registration error:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       
       let errorMessage = 'Failed to register. Please try again.';
       
@@ -166,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage = 'Network error. Please check your internet connection and try again.';
       } else if (error.code === 'auth/operation-not-allowed') {
         errorMessage = 'Email/password registration is not enabled. Please contact support.';
+      } else if (error.code === 'auth/configuration-not-found') {
+        errorMessage = 'Firebase authentication configuration issue. Please contact support.';
+        console.error('This error often occurs when the Firebase Authentication service is not properly configured in the Firebase console.');
       }
       
       toast.error(errorMessage);
