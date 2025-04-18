@@ -6,7 +6,8 @@ import { auth } from '@/lib/firebase';
 import { 
   signInWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged, 
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
   User as FirebaseUser 
 } from 'firebase/auth';
 import { getUserProfile, initializeUserProfile, UserProfile } from '@/lib/userProfile';
@@ -17,6 +18,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -110,6 +112,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const register = async (email: string, password: string, displayName: string) => {
+    try {
+      setLoading(true);
+      
+      // Create new user with Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const newUser = userCredential.user;
+      
+      // Initialize user profile in Firestore with display name
+      await initializeUserProfile({
+        ...newUser,
+        displayName: displayName // Override with the provided display name
+      });
+      
+      toast.success('Registration successful! You can now log in.');
+      return;
+      
+    } catch (error: any) {
+      console.error('Registration error:', error.code, error.message);
+      
+      let errorMessage = 'Failed to register. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please log in or use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address. Please check and try again.';
+      }
+      
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -120,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
