@@ -54,12 +54,29 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await registerUser(data.email, data.password, data.displayName);
-      registerForm.reset();
-      setIsRegisterMode(false);
-      toast.success('Registration successful! You can now log in.');
+      
+      // After successful registration, automatically try to log in
+      try {
+        await login(data.email, data.password);
+        toast.success('Registration successful! You are now logged in.');
+        router.push('/dashboard');
+      } catch (loginError: any) {
+        console.error('Auto-login after registration failed:', loginError);
+        // If auto-login fails, still show success for registration but ask to login manually
+        toast.success('Registration successful! Please log in with your new credentials.');
+        setIsRegisterMode(false);
+        registerForm.reset();
+      }
     } catch (error: any) {
-      console.error('Registration error:', error);
-      toast.error(error.message || 'Registration failed. Please try again.');
+      console.error('Registration error details:', error);
+      let errorMessage = error.message || 'Registration failed. Please try again.';
+      
+      // Show the actual Firebase error code to help debugging
+      if (error.code) {
+        console.error('Firebase error code:', error.code);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

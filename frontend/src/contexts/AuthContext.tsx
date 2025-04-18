@@ -6,9 +6,9 @@ import { auth } from '@/lib/firebase';
 import { 
   signInWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  User as FirebaseUser 
+  onAuthStateChanged, 
+  User as FirebaseUser,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { getUserProfile, initializeUserProfile, UserProfile } from '@/lib/userProfile';
 import { toast } from 'react-hot-toast';
@@ -18,8 +18,8 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
+  register: (email: string, password: string, displayName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,43 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, displayName: string) => {
-    try {
-      setLoading(true);
-      
-      // Create new user with Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const newUser = userCredential.user;
-      
-      // Initialize user profile in Firestore with display name
-      await initializeUserProfile({
-        ...newUser,
-        displayName: displayName // Override with the provided display name
-      });
-      
-      toast.success('Registration successful! You can now log in.');
-      return;
-      
-    } catch (error: any) {
-      console.error('Registration error:', error.code, error.message);
-      
-      let errorMessage = 'Failed to register. Please try again.';
-      
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered. Please log in or use a different email.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak. Please use a stronger password.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address. Please check and try again.';
-      }
-      
-      toast.error(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const logout = async () => {
     try {
       await signOut(auth);
@@ -158,8 +121,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const register = async (email: string, password: string, displayName: string) => {
+    try {
+      setLoading(true);
+      console.log(`Attempting to register new user: ${email} with display name: ${displayName}`);
+      
+      // Create new user with Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const newUser = userCredential.user;
+      console.log(`User created successfully with UID: ${newUser.uid}`);
+      
+      // Initialize user profile in Firestore with display name
+      console.log(`Initializing user profile for ${newUser.uid}`);
+      const userProfile = await initializeUserProfile({
+        ...newUser,
+        displayName: displayName // Override with the provided display name
+      });
+      
+      console.log(`User profile initialized: ${userProfile ? 'success' : 'failed'}`);
+      
+      if (!userProfile) {
+        console.error('Failed to initialize user profile in Firestore');
+        toast.error('Account created but profile setup had issues. Some features may be limited.');
+      } else {
+        toast.success('Registration successful!');
+      }
+      
+      return;
+      
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = 'Failed to register. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please log in or use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address. Please check and try again.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Email/password registration is not enabled. Please contact support.';
+      }
+      
+      toast.error(errorMessage);
+      throw error; // Rethrow to allow the calling component to handle it
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
