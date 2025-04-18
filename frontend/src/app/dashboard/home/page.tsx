@@ -341,18 +341,16 @@ export default function HomePage() {
         throw new Error('Lead not found');
       }
       
-      // Update the lead in state
+      // Update the main leads state
       const updatedLeads = leads.map(lead => {
         if (lead.id.toString() === leadId.toString()) {
           return { ...lead, status: newStatus };
         }
         return lead;
       });
-      
-      // Update the leads state
       setLeads(updatedLeads);
       
-      // Update the lead in the appropriate category
+      // Update contact leads if the lead is in that category
       if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
         const updatedContactLeads = contactLeads.map(lead => {
           if (lead.id.toString() === leadId.toString()) {
@@ -361,33 +359,25 @@ export default function HomePage() {
           return lead;
         });
         setContactLeads(updatedContactLeads);
+        
+        // Update the filtered contact leads as well
+        setFilteredContactLeads(prevFiltered => 
+          prevFiltered.map(lead => 
+            lead.id.toString() === leadId.toString() 
+              ? { ...lead, status: newStatus } 
+              : lead
+          )
+        );
       }
       
-      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const updatedUpcomingLeads = upcomingLeads.map(lead => {
-          if (lead.id.toString() === leadId.toString()) {
-            return { ...lead, status: newStatus };
-          }
-          return lead;
-        });
-        setUpcomingLeads(updatedUpcomingLeads);
-      }
+      // Update in the database/storage
+      await updateLead(leadId, { status: newStatus });
       
-      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const updatedArchivedLeads = archivedLeads.map(lead => {
-          if (lead.id.toString() === leadId.toString()) {
-            return { ...lead, status: newStatus };
-          }
-          return lead;
-        });
-        setArchivedLeads(updatedArchivedLeads);
-      }
-      
-      // Update local storage
-      updateLead({ ...leadToUpdate, status: newStatus });
+      // Show success message
+      toast.success(`Status updated to "${newStatus}"`);
     } catch (error) {
       console.error('Error updating lead status:', error);
-      alert('Failed to update lead status. Please try again.');
+      toast.error('Failed to update lead status. Please try again.');
     }
   };
   
@@ -401,18 +391,16 @@ export default function HomePage() {
         throw new Error('Lead not found');
       }
       
-      // Update the lead in state
+      // Update the main leads state
       const updatedLeads = leads.map(lead => {
         if (lead.id.toString() === leadId.toString()) {
           return { ...lead, [field]: value };
         }
         return lead;
       });
-      
-      // Update the leads state
       setLeads(updatedLeads);
       
-      // Update the lead in the appropriate category
+      // Update contact leads if the lead is in that category
       if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
         const updatedContactLeads = contactLeads.map(lead => {
           if (lead.id.toString() === leadId.toString()) {
@@ -421,33 +409,28 @@ export default function HomePage() {
           return lead;
         });
         setContactLeads(updatedContactLeads);
+        
+        // Update the filtered contact leads as well
+        setFilteredContactLeads(prevFiltered => 
+          prevFiltered.map(lead => 
+            lead.id.toString() === leadId.toString() 
+              ? { ...lead, [field]: value } 
+              : lead
+          )
+        );
       }
       
-      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const updatedUpcomingLeads = upcomingLeads.map(lead => {
-          if (lead.id.toString() === leadId.toString()) {
-            return { ...lead, [field]: value };
-          }
-          return lead;
-        });
-        setUpcomingLeads(updatedUpcomingLeads);
-      }
+      // Update in the database/storage
+      await updateLead(leadId, { [field]: value });
       
-      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const updatedArchivedLeads = archivedLeads.map(lead => {
-          if (lead.id.toString() === leadId.toString()) {
-            return { ...lead, [field]: value };
-          }
-          return lead;
-        });
-        setArchivedLeads(updatedArchivedLeads);
-      }
+      // Close the editing cell
+      setEditingCell(null);
       
-      // Update local storage
-      updateLead({ ...leadToUpdate, [field]: value });
+      // Show success message
+      toast.success('Lead updated successfully');
     } catch (error) {
       console.error(`Error updating lead ${leadId}, field ${field}:`, error);
-      alert('Failed to update lead. Please try again.');
+      toast.error('Failed to update lead. Please try again.');
     }
   };
 
@@ -457,31 +440,25 @@ export default function HomePage() {
       const filteredLeads = leads.filter(lead => lead.id.toString() !== leadId.toString());
       setLeads(filteredLeads);
       
-      // Remove the lead from the appropriate category
+      // Remove the lead from contact leads if it's in that category
       if (contactLeads.some(lead => lead.id.toString() === leadId.toString())) {
         const filteredContactLeads = contactLeads.filter(lead => lead.id.toString() !== leadId.toString());
         setContactLeads(filteredContactLeads);
+        
+        // Update the filtered leads list as well
+        setFilteredContactLeads(prevFiltered => 
+          prevFiltered.filter(lead => lead.id.toString() !== leadId.toString())
+        );
       }
       
-      if (upcomingLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const filteredUpcomingLeads = upcomingLeads.filter(lead => lead.id.toString() !== leadId.toString());
-        setUpcomingLeads(filteredUpcomingLeads);
-      }
+      // Remove the lead from database/storage
+      await deleteLead(leadId.toString());
       
-      if (archivedLeads.some(lead => lead.id.toString() === leadId.toString())) {
-        const filteredArchivedLeads = archivedLeads.filter(lead => lead.id.toString() !== leadId.toString());
-        setArchivedLeads(filteredArchivedLeads);
-      }
-      
-      // Remove the lead from local storage
-      deleteLead(leadId.toString());
-      
-      // Close the confirmation dialog
-      setShowDeleteConfirmation(false);
-      setLeadToDelete(null);
+      // Show success message
+      toast.success('Lead deleted successfully');
     } catch (error) {
       console.error('Error deleting lead:', error);
-      alert('Failed to delete lead. Please try again.');
+      toast.error('Failed to delete lead. Please try again.');
     }
   };
 
