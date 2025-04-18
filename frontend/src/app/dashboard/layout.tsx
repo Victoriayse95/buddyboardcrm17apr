@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { HomeIcon, UsersIcon, PlusCircleIcon, CheckCircleIcon, ArchiveBoxIcon, ClipboardIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UsersIcon, PlusCircleIcon, CheckCircleIcon, ArchiveBoxIcon, ClipboardIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 export default function DashboardLayout({
   children,
@@ -31,6 +31,7 @@ export default function DashboardLayout({
       isButton: false,
       hasDropdown: true 
     },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon, current: pathname === '/dashboard/analytics', isButton: false },
   ];
 
   const tasksNavigation = [
@@ -52,7 +53,9 @@ export default function DashboardLayout({
               <div className="flex h-16 justify-between items-center">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <span className="text-2xl font-bold text-indigo-600">BuddyBoard</span>
+                    <Link href="/dashboard/home" className="text-2xl font-bold text-indigo-600 hover:text-indigo-500">
+                      BuddyBoard
+                    </Link>
                   </div>
                   <div className="hidden sm:ml-6 sm:flex">
                     {navigation.map((item) => (
