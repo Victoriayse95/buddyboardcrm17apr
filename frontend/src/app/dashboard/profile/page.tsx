@@ -1,34 +1,67 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useState, useRef, ChangeEvent, FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  updateUserEmail,
+  updateUserPassword,
+  updateUserProfile,
+  uploadProfilePhoto,
+  deleteProfilePhoto
+} from '@/lib/userProfile';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { toast } from 'react-hot-toast';
+import {
+  UserCircleIcon,
+  PencilIcon,
+  XMarkIcon,
+  ArrowPathIcon,
+  MoonIcon,
+  SunIcon,
+  BellIcon,
+  BellSlashIcon
+} from '@heroicons/react/24/outline';
 
-const schema = yup.object({
-  full_name: yup.string().required('Full name is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
-  current_password: yup.string().test('current-password', 'Current password is required', function(value) {
-    return !this.parent.new_password || (this.parent.new_password && value);
-  }),
-  new_password: yup.string().min(8, 'Password must be at least 8 characters'),
-  confirm_password: yup.string().oneOf([yup.ref('new_password')], 'Passwords must match'),
-}).required();
+interface FormState {
+  displayName: string;
+  phoneNumber: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+  confirmPassword: string;
+  theme: 'light' | 'dark' | 'system';
+  notifications: boolean;
+}
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences'>('profile');
   const [loading, setLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      full_name: user?.full_name || '',
-      email: user?.email || '',
-    },
+  // Form states
+  const [formState, setFormState] = useState<FormState>({
+    displayName: user?.displayName || '',
+    phoneNumber: user?.phoneNumber || '',
+    currentPassword: '',
+    newEmail: '',
+    newPassword: '',
+    confirmPassword: '',
+    theme: user?.preferences?.theme || 'system',
+    notifications: user?.preferences?.notifications || true
   });
+
+  // Update form state when user data is loaded
+  if (user && formState.displayName === '' && user.displayName) {
+    setFormState({
+      ...formState,
+      displayName: user.displayName,
+      phoneNumber: user.phoneNumber || '',
+      theme: user.preferences.theme,
+      notifications: user.preferences.notifications
+    });
+  }
 
   const onSubmit = async (data: any) => {
     try {
@@ -52,7 +85,6 @@ export default function ProfilePage() {
       */
       
       toast.success('Profile updated successfully');
-      reset(data);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
@@ -70,7 +102,7 @@ export default function ProfilePage() {
             Update your account information and password.
           </p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
+          <form onSubmit={onSubmit} className="mt-6 space-y-6">
             <div>
               <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
                 Full Name
@@ -156,13 +188,6 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                Sign Out
-              </button>
               <button
                 type="submit"
                 disabled={loading}
