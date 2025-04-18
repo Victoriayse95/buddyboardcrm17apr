@@ -1,5 +1,5 @@
 'use client';
-// Dashboard Layout - Updated with profile option
+// Dashboard Layout - Updated for Vercel deployment with profile option
 
 import { Fragment, useState } from 'react';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
