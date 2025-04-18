@@ -105,9 +105,9 @@ export default function AnalyticsPage() {
     const monthlyRevenueData = generateMonthlyRevenueData(filteredLeads);
     setMonthlyRevenue(monthlyRevenueData);
 
-    // Generate status distribution data for pie chart
-    const statusDistributionData = generateStatusDistributionData(filteredLeads);
-    setStatusDistribution(statusDistributionData);
+    // Generate service distribution data for pie chart
+    const serviceDistributionData = generateServiceDistributionData(filteredLeads, upcomingServicesCount, completedServicesCount);
+    setStatusDistribution(serviceDistributionData);
 
   }, [leads, timePeriod]);
 
@@ -166,18 +166,18 @@ export default function AnalyticsPage() {
     };
   };
 
-  // Generate status distribution data
-  const generateStatusDistributionData = (leads: Lead[]) => {
-    const statusCounts: { [key: string]: number } = {};
+  // Generate service distribution data
+  const generateServiceDistributionData = (leads: Lead[], upcomingCount: number, completedCount: number) => {
+    // Count cancelled leads
+    const cancelledCount = leads.filter(lead => lead.status === "Cancelled").length;
     
-    leads.forEach(lead => {
-      const status = lead.status || 'Unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
-    });
+    // Count unique customers (by customer_name, case insensitive)
+    const uniqueCustomers = new Set(leads.map(lead => lead.customer_name.toLowerCase()));
+    const totalCustomers = uniqueCustomers.size;
     
     return {
-      labels: Object.keys(statusCounts),
-      data: Object.values(statusCounts)
+      labels: ['Unique Customers', 'Cancelled Services', 'Completed Services', 'Upcoming Services'],
+      data: [totalCustomers, cancelledCount, completedCount, upcomingCount]
     };
   };
 
@@ -349,9 +349,9 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Status Distribution Pie Chart */}
+          {/* Service Distribution Pie Chart */}
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Status Distribution</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Service Distribution</h2>
             <div className="h-80 flex items-center justify-center">
               <Pie
                 options={{
@@ -370,20 +370,16 @@ export default function AnalyticsPage() {
                       label: 'Count',
                       data: statusDistribution.data,
                       backgroundColor: [
-                        'rgba(255, 99, 132, 0.7)',
-                        'rgba(54, 162, 235, 0.7)',
-                        'rgba(255, 206, 86, 0.7)',
-                        'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)',
-                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(79, 70, 229, 0.7)', // Indigo for Unique Customers
+                        'rgba(255, 99, 132, 0.7)', // Red for Cancelled
+                        'rgba(75, 192, 192, 0.7)', // Green for Completed
+                        'rgba(54, 162, 235, 0.7)', // Blue for Upcoming
                       ],
                       borderColor: [
+                        'rgba(79, 70, 229, 1)',
                         'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
                         'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)',
+                        'rgba(54, 162, 235, 1)',
                       ],
                       borderWidth: 1,
                     },
