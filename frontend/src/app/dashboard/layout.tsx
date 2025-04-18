@@ -120,7 +120,7 @@ export default function DashboardLayout({
                         <span className="sr-only">Open user menu</span>
                         <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                           <span className="text-indigo-800 font-medium">
-                            {user?.full_name.charAt(0)}
+                            {user?.displayName && user.displayName.charAt(0)}
                           </span>
                         </div>
                       </Menu.Button>
@@ -231,12 +231,12 @@ export default function DashboardLayout({
                   <div className="flex-shrink-0">
                     <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                       <span className="text-indigo-800 font-medium">
-                        {user?.full_name.charAt(0)}
+                        {user?.displayName && user.displayName.charAt(0)}
                       </span>
                     </div>
                   </div>
                   <div className="ml-3">
-                    <div className="text-base font-medium text-gray-800">{user?.full_name}</div>
+                    <div className="text-base font-medium text-gray-800">{user?.displayName}</div>
                     <div className="text-sm font-medium text-gray-500">{user?.email}</div>
                   </div>
                 </div>
