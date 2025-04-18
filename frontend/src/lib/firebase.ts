@@ -2,6 +2,7 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -21,6 +22,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
+let storage: FirebaseStorage;
 
 // Only initialize Firebase if it hasn't been initialized yet
 // This prevents re-initialization during SSR
@@ -29,6 +31,7 @@ if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
+    storage = getStorage(app);
     
     if (isBrowser) {
       console.log("Firebase initialized successfully");
@@ -42,6 +45,7 @@ if (!getApps().length) {
   app = getApps()[0];
   db = getFirestore(app);
   auth = getAuth(app);
+  storage = getStorage(app);
 }
 
-export { app, db, auth }; 
+export { app, db, auth, storage }; 
