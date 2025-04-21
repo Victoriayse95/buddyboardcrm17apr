@@ -139,26 +139,45 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEmailSubmit = async (e: FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.currentPassword || !formState.newEmail) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+    setLoading(true);
+
     try {
-      setLoading(true);
-      if (user) {
-        await updateUserEmail(formState.currentPassword, formState.newEmail);
-        setFormState({
-          ...formState,
+      // Check if the new email is different from the current one
+      if (formState.newEmail === user?.email) {
+        toast.error('New email is the same as current email');
+        setLoading(false);
+        return;
+      }
+
+      // Check if the current password is provided
+      if (!formState.currentPassword) {
+        toast.error('Current password is required');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Attempting to update email to:', formState.newEmail);
+      const success = await updateUserEmail(formState.currentPassword, formState.newEmail);
+      
+      if (success) {
+        console.log('Email updated successfully');
+        // Reset form state
+        setFormState(prev => ({
+          ...prev,
           currentPassword: '',
           newEmail: ''
-        });
-        toast.success('Email updated successfully');
+        }));
+        
+        // Force reload to update user data
+        window.location.reload();
+      } else {
+        console.error('Email update failed');
       }
-    } catch (error: any) {
-      console.error('Error updating email:', error);
-      toast.error(error.message || 'Failed to update email');
+    } catch (error) {
+      console.error('Error in handleEmailSubmit:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -267,6 +286,7 @@ export default function ProfilePage() {
   };
 
   const formatDate = (date: Date) => {
+    // Format date in DD/MM/YYYY, HH:MM format using British locale
     return new Intl.DateTimeFormat('en-GB', {
       day: '2-digit',
       month: '2-digit',
