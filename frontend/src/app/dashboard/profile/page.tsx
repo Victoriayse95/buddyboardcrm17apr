@@ -447,7 +447,7 @@ export default function ProfilePage() {
                     name="displayName"
                     value={formState.displayName}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                   />
                 </div>
 
@@ -461,7 +461,7 @@ export default function ProfilePage() {
                     name="phoneNumber"
                     value={formState.phoneNumber}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                   />
                 </div>
 
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                       name="currentPassword"
                       value={formState.currentPassword}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                       required
                     />
                   </div>
@@ -514,7 +514,7 @@ export default function ProfilePage() {
                       name="newEmail"
                       value={formState.newEmail}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                       required
                     />
                   </div>
@@ -550,7 +550,7 @@ export default function ProfilePage() {
                       name="currentPassword"
                       value={formState.currentPassword}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                       required
                     />
                   </div>
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                       name="newPassword"
                       value={formState.newPassword}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                       required
                     />
                   </div>
@@ -578,7 +578,7 @@ export default function ProfilePage() {
                       name="confirmPassword"
                       value={formState.confirmPassword}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                       required
                     />
                   </div>
@@ -616,7 +616,7 @@ export default function ProfilePage() {
                       name="theme"
                       value={formState.theme}
                       onChange={handleSelectChange}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
                     >
                       <option value="light">Light</option>
                       <option value="dark">Dark</option>
