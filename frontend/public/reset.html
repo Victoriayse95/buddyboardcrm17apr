@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Reset - BuddyBoard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col justify-center py-12">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      Admin Account Reset
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      This page will create a default admin account
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div id="success-message" class="hidden space-y-6">
+        <div class="bg-green-50 p-4 rounded-md">
+          <div class="flex">
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-green-800">
+                Account created successfully
+              </h3>
+              <div class="mt-2 text-sm text-green-700">
+                <p>
+                  Login credentials:<br>
+                  Email: admin@example.com<br>
+                  Password: Admin123!
+                </p>
+              </div>
+              <div class="mt-4">
+                <a href="/login" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Go to Login
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" class="hidden mb-4 bg-red-50 p-4 rounded-md">
+        <div class="flex">
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">
+              Error
+            </h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p id="error-text"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="reset-form">
+        <button
+          id="create-account-btn"
+          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Create Admin Account
+        </button>
+        
+        <div class="mt-4 text-center">
+          <a href="/login" class="text-sm text-indigo-600 hover:text-indigo-500">
+            Return to login
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAtHVCWjP1MgZvmC6RbVnVC6x8klioM2VQ",
+      authDomain: "buddyboardcrm17apr.firebaseapp.com",
+      projectId: "buddyboardcrm17apr",
+      storageBucket: "buddyboardcrm17apr.appspot.com",
+      messagingSenderId: "854033186391",
+      appId: "1:854033186391:web:cd99d0ff59142ad4e0ad12"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    document.getElementById('create-account-btn').addEventListener('click', async () => {
+      try {
+        document.getElementById('create-account-btn').textContent = 'Creating account...';
+        document.getElementById('create-account-btn').disabled = true;
+        document.getElementById('error-message').classList.add('hidden');
+        
+        // Create default admin account
+        const email = 'admin@example.com';
+        const password = 'Admin123!';
+        
+        // Try to create user
+        try {
+          const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+          const user = userCredential.user;
+          
+          // Create user profile in Firestore
+          await db.collection('users').doc(user.uid).set({
+            email: email,
+            displayName: 'Admin User',
+            photoURL: null,
+            role: 'admin',
+            phoneNumber: null,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            preferences: {
+              theme: 'system',
+              notifications: true
+            }
+          });
+          
+          // Show success message
+          document.getElementById('reset-form').classList.add('hidden');
+          document.getElementById('success-message').classList.remove('hidden');
+          console.log('Admin account created successfully');
+          
+        } catch (err) {
+          if (err.code === 'auth/email-already-in-use') {
+            showError('Admin account already exists. Please use the login page with admin@example.com and Admin123!');
+          } else {
+            throw err;
+          }
+        }
+      } catch (error) {
+        console.error('Error creating admin account:', error);
+        showError(error.message || 'Failed to create admin account');
+      } finally {
+        document.getElementById('create-account-btn').textContent = 'Create Admin Account';
+        document.getElementById('create-account-btn').disabled = false;
+      }
+    });
+
+    function showError(message) {
+      document.getElementById('error-text').textContent = message;
+      document.getElementById('error-message').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html> 
