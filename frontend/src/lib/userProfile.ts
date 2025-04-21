@@ -148,42 +148,102 @@ export async function updateUserEmail(
 ): Promise<boolean> {
   try {
     if (!isBrowser || !auth.currentUser) {
+      console.error('[updateUserEmail] Not authenticated or not in browser environment');
       toast.error('Not authenticated');
       return false;
     }
     
     const user = auth.currentUser;
+    console.log('[updateUserEmail] Current user found:', user.uid);
     
-    // Re-authenticate user before changing email
-    const credential = EmailAuthProvider.credential(user.email!, currentPassword);
-    await reauthenticateWithCredential(user, credential);
-    
-    // Update email in Firebase Auth
-    await updateEmail(user, newEmail);
-    
-    // Update email in Firestore profile
-    const userRef = doc(db, getUserCollection(), user.uid);
-    await updateDoc(userRef, {
-      email: newEmail,
-      lastUpdated: serverTimestamp()
-    });
-    
-    toast.success('Email updated successfully');
-    return true;
-  } catch (error: any) {
-    console.error('Error updating email:', error);
-    
-    // Provide user-friendly error messages
-    if (error.code === 'auth/requires-recent-login') {
-      toast.error('For security, please log out and log back in before changing your email');
-    } else if (error.code === 'auth/invalid-credential') {
-      toast.error('Incorrect password');
-    } else if (error.code === 'auth/email-already-in-use') {
-      toast.error('This email is already in use by another account');
-    } else {
-      toast.error('Failed to update email. Please try again');
+    if (!user.email) {
+      console.error('[updateUserEmail] Current user has no email');
+      toast.error('User has no email address');
+      return false;
     }
     
+    // Check if the new email is the same as the current email
+    if (user.email === newEmail) {
+      console.log('[updateUserEmail] New email is the same as current email');
+      toast.error('The new email is the same as your current email');
+      return false;
+    }
+    
+    // Re-authenticate user before changing email
+    console.log('[updateUserEmail] Attempting to re-authenticate user with provided password');
+    try {
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      console.log('[updateUserEmail] Re-authentication successful');
+    } catch (authError: any) {
+      console.error('[updateUserEmail] Re-authentication failed:', authError.code, authError.message);
+      
+      if (authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
+        toast.error('The password you entered is incorrect');
+      } else if (authError.code === 'auth/too-many-requests') {
+        toast.error('Too many unsuccessful attempts. Please try again later');
+      } else if (authError.code === 'auth/user-mismatch') {
+        toast.error('The credentials do not match the current user');
+      } else {
+        toast.error('Authentication failed. Please try again');
+      }
+      
+      return false;
+    }
+    
+    // Update email in Firebase Auth
+    console.log('[updateUserEmail] Updating email in Firebase Auth');
+    try {
+      await updateEmail(user, newEmail);
+      console.log('[updateUserEmail] Firebase Auth email update successful');
+    } catch (emailError: any) {
+      console.error('[updateUserEmail] Failed to update email in Firebase Auth:', emailError.code, emailError.message);
+      
+      if (emailError.code === 'auth/email-already-in-use') {
+        toast.error('This email is already in use by another account');
+      } else if (emailError.code === 'auth/invalid-email') {
+        toast.error('The email address is not valid');
+      } else if (emailError.code === 'auth/requires-recent-login') {
+        toast.error('For security, please log out and log back in before changing your email');
+      } else {
+        toast.error('Failed to update email in authentication system');
+      }
+      
+      return false;
+    }
+    
+    // Update email in Firestore profile
+    console.log('[updateUserEmail] Updating email in Firestore profile');
+    try {
+      const userRef = doc(db, getUserCollection(), user.uid);
+      await updateDoc(userRef, {
+        email: newEmail,
+        lastUpdated: serverTimestamp()
+      });
+      console.log('[updateUserEmail] Firestore profile email update successful');
+    } catch (firestoreError: any) {
+      console.error('[updateUserEmail] Failed to update email in Firestore:', firestoreError);
+      
+      // Despite the Firestore error, the email was updated in Firebase Auth
+      // We should still consider this a partial success but warn the user
+      toast.error('Email updated in authentication but profile data wasn\'t synchronized. Please refresh the page.');
+      
+      // Force reload to reflect the auth changes
+      window.location.reload();
+      return true;
+    }
+    
+    // Success path
+    toast.success('Email updated successfully');
+    return true;
+    
+  } catch (error: any) {
+    // This is the general catch-all error handler
+    console.error('[updateUserEmail] Unhandled error:', error);
+    console.error('[updateUserEmail] Error code:', error.code);
+    console.error('[updateUserEmail] Error message:', error.message);
+    
+    toast.error('Failed to update email. Please try again');
     return false;
   }
 }

@@ -143,7 +143,21 @@ export default function ProfilePage() {
     e.preventDefault();
     setLoading(true);
 
+    // Add debug information
+    console.log('Submitting email change form', {
+      currentEmail: user?.email,
+      newEmail: formState.newEmail,
+      passwordProvided: !!formState.currentPassword
+    });
+
     try {
+      // Check if the new email is not empty
+      if (!formState.newEmail || formState.newEmail.trim() === '') {
+        toast.error('Please enter a new email address');
+        setLoading(false);
+        return;
+      }
+
       // Check if the new email is different from the current one
       if (formState.newEmail === user?.email) {
         toast.error('New email is the same as current email');
@@ -162,7 +176,7 @@ export default function ProfilePage() {
       const success = await updateUserEmail(formState.currentPassword, formState.newEmail);
       
       if (success) {
-        console.log('Email updated successfully');
+        console.log('Email update successful, refreshing page');
         // Reset form state
         setFormState(prev => ({
           ...prev,
@@ -174,10 +188,11 @@ export default function ProfilePage() {
         window.location.reload();
       } else {
         console.error('Email update failed');
+        // Toast error is already shown by the updateUserEmail function
       }
     } catch (error) {
       console.error('Error in handleEmailSubmit:', error);
-      toast.error('An unexpected error occurred');
+      toast.error('An unexpected error occurred while updating email');
     } finally {
       setLoading(false);
     }
