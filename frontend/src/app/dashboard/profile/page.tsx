@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef, ChangeEvent, FormEvent } from 'react';
+import { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   updateUserEmail,
   updateUserPassword,
   updateUserProfile,
   uploadProfilePhoto,
-  deleteProfilePhoto
+  deleteProfilePhoto,
+  updateUserPreferences
 } from '@/lib/userProfile';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -19,20 +20,25 @@ import {
   MoonIcon,
   SunIcon,
   BellIcon,
-  BellSlashIcon
+  BellSlashIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
-// Define UserProfile type if it's not properly imported elsewhere
+// Updated to match the actual UserProfile interface from userProfile.ts
 interface UserProfile {
-  uid: string;
-  displayName: string | null;
-  email: string | null;
-  phoneNumber: string | null;
+  id: string;
+  email: string;
+  displayName: string;
   photoURL: string | null;
-  preferences?: {
-    theme?: 'light' | 'dark' | 'system';
-    notifications?: boolean;
+  role: 'admin' | 'staff';
+  phoneNumber: string | null;
+  lastUpdated: any; // Firestore Timestamp
+  createdAt: any; // Firestore Timestamp
+  preferences: {
+    theme: 'light' | 'dark' | 'system';
+    notifications: boolean;
   };
+  customFields?: Record<string, any>;
 }
 
 interface FormState {
@@ -52,6 +58,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preferencesChanged, setPreferencesChanged] = useState(false);
+  const [lastActivity, setLastActivity] = useState<Date | null>(null);
 
   // Form states
   const [formState, setFormState] = useState<FormState>({
@@ -66,15 +74,25 @@ export default function ProfilePage() {
   });
 
   // Update form state when user data is loaded
-  if (user && formState.displayName === '' && user.displayName) {
-    setFormState({
-      ...formState,
-      displayName: user.displayName,
-      phoneNumber: user.phoneNumber || '',
-      theme: user.preferences?.theme || 'system',
-      notifications: user.preferences?.notifications || true
-    });
-  }
+  useEffect(() => {
+    if (user) {
+      setFormState({
+        ...formState,
+        displayName: user.displayName || '',
+        phoneNumber: user.phoneNumber || '',
+        theme: user.preferences?.theme || 'system',
+        notifications: user.preferences?.notifications || true
+      });
+      
+      // Set last activity from lastUpdated
+      if (user.lastUpdated) {
+        const lastUpdatedDate = user.lastUpdated instanceof Date 
+          ? user.lastUpdated 
+          : user.lastUpdated.toDate ? user.lastUpdated.toDate() : new Date(user.lastUpdated);
+        setLastActivity(lastUpdatedDate);
+      }
+    }
+  }, [user]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -82,6 +100,11 @@ export default function ProfilePage() {
       ...formState,
       [name]: type === 'checkbox' ? checked : value
     });
+    
+    // Set preferences changed flag if preferences are modified
+    if (name === 'theme' || name === 'notifications') {
+      setPreferencesChanged(true);
+    }
   };
 
   const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -90,6 +113,11 @@ export default function ProfilePage() {
       ...formState,
       [name]: value
     });
+    
+    // Set preferences changed flag if preferences are modified
+    if (name === 'theme') {
+      setPreferencesChanged(true);
+    }
   };
 
   const handleProfileSubmit = async (e: FormEvent) => {
@@ -97,7 +125,7 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       if (user) {
-        await updateUserProfile(user.uid, {
+        await updateUserProfile(user.id, {
           displayName: formState.displayName,
           phoneNumber: formState.phoneNumber
         });
@@ -166,6 +194,28 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePreferencesSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!preferencesChanged) return;
+    
+    try {
+      setLoading(true);
+      if (user) {
+        await updateUserPreferences(user.id, {
+          theme: formState.theme,
+          notifications: formState.notifications
+        });
+        toast.success('Preferences saved successfully');
+        setPreferencesChanged(false);
+      }
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      toast.error('Failed to save preferences');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePhotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -186,8 +236,8 @@ export default function ProfilePage() {
 
     try {
       setPhotoLoading(true);
-      if (user.uid) {
-        await uploadProfilePhoto(user.uid, file);
+      if (user.id) {
+        await uploadProfilePhoto(user.id, file);
         toast.success('Profile photo updated');
       }
     } catch (error) {
@@ -203,10 +253,10 @@ export default function ProfilePage() {
   };
 
   const handleRemovePhoto = async () => {
-    if (!user || !user.uid) return;
+    if (!user || !user.id) return;
     try {
       setPhotoLoading(true);
-      await deleteProfilePhoto(user.uid);
+      await deleteProfilePhoto(user.id, user.photoURL || '');
       toast.success('Profile photo removed');
     } catch (error) {
       console.error('Error removing photo:', error);
@@ -214,6 +264,16 @@ export default function ProfilePage() {
     } finally {
       setPhotoLoading(false);
     }
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
 
   if (authLoading) {
@@ -228,6 +288,45 @@ export default function ProfilePage() {
           <p className="mt-1 text-sm text-gray-500">
             Update your account information and preferences.
           </p>
+
+          {/* Account summary card */}
+          <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6 bg-gray-50">
+              <h3 className="text-lg font-medium leading-6 text-gray-900">Account Summary</h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">User and activity details.</p>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+              <dl className="sm:divide-y sm:divide-gray-200">
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{user?.email}</dd>
+                </div>
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Role</dt>
+                  <dd className="mt-1 text-sm text-gray-900 capitalize sm:mt-0 sm:col-span-2">{user?.role || 'User'}</dd>
+                </div>
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Account created</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    {user?.createdAt ? formatDate(user.createdAt instanceof Date ? user.createdAt : user.createdAt.toDate()) : 'Unknown'}
+                  </dd>
+                </div>
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Last activity</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex items-center">
+                    {lastActivity ? (
+                      <>
+                        <ClockIcon className="h-4 w-4 text-gray-400 mr-1" />
+                        {formatDate(lastActivity)}
+                      </>
+                    ) : (
+                      'No recent activity'
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
 
           <div className="mt-6 border-b border-gray-200">
             <nav className="-mb-px flex space-x-6">
@@ -486,7 +585,7 @@ export default function ProfilePage() {
 
           {activeTab === 'preferences' && (
             <div className="mt-6">
-              <form className="space-y-6">
+              <form onSubmit={handlePreferencesSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="theme" className="block text-sm font-medium text-gray-700">
                     Theme
@@ -543,6 +642,27 @@ export default function ProfilePage() {
                   <p className="mt-1 text-sm text-gray-500">
                     Receive notifications about important updates and reminders.
                   </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={loading || !preferencesChanged}
+                    className={`inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      loading || !preferencesChanged 
+                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                        : 'border-transparent bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500'
+                    }`}
+                  >
+                    {loading ? (
+                      <div className="flex items-center">
+                        <ArrowPathIcon className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                        Saving...
+                      </div>
+                    ) : (
+                      'Save Preferences'
+                    )}
+                  </button>
                 </div>
               </form>
             </div>
