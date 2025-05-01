@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLeads, updateLead, deleteLead, Lead } from '@/lib/leadStorage';
+import { getLeads, updateLead, deleteLead, Lead, LeadStatus } from '@/lib/leadStorage';
 import { PencilIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -118,7 +118,7 @@ export default function HomePage() {
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Status options for dropdown
-  const statusOptions = [
+  const statusOptions: LeadStatus[] = [
     "Send Reminder",
     "Reminder Sent",
     "Pending Payment",
@@ -142,7 +142,7 @@ export default function HomePage() {
   const [displayedContactLeads, setDisplayedContactLeads] = useState<Lead[]>([]);
 
   // Add status color mapping
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: LeadStatus) => {
     switch (status) {
       case 'Pending Payment':
         return 'bg-red-100 text-red-800 hover:bg-red-200';
@@ -154,6 +154,12 @@ export default function HomePage() {
         return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
       case 'Completed':
         return 'bg-teal-100 text-teal-800 hover:bg-teal-200';
+      case 'Send Reminder':
+        return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+      case 'Reminder Sent':
+        return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
+      case 'Cancelled':
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
       default:
         return 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200';
     }
@@ -438,7 +444,7 @@ export default function HomePage() {
     return `${year}-${month}-${day}`;
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
     try {
       // Find the lead in the leads state
       const leadToUpdate = leads.find(lead => lead.id.toString() === leadId.toString());
@@ -570,7 +576,7 @@ export default function HomePage() {
   };
 
   // Update the getStatusStyling function to use a better approach for the indicator
-  const getStatusStyling = (status: string) => {
+  const getStatusStyling = (status: LeadStatus) => {
     if (status === "Send Reminder") {
       return {
         rowClass: "bg-amber-50 border-l-4 border-amber-500",
@@ -688,7 +694,7 @@ export default function HomePage() {
         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
           <select
             value={lead.status}
-            onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+            onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
             className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${getStatusColor(lead.status)}`}
           >
             {statusOptions.map(option => (
@@ -1060,28 +1066,40 @@ export default function HomePage() {
           </div>
 
           {/* Status Color Legend */}
-          <div className="mt-4 bg-white p-4 rounded-lg shadow">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Status Colors</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded bg-red-100"></div>
-                <span className="text-xs text-gray-600">Pending Payment</span>
+          <div className="mt-4 p-4 bg-white rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-2">Status Legend</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-red-100`}></div>
+                <span className="text-sm">Pending Payment</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded bg-yellow-100"></div>
-                <span className="text-xs text-gray-600">Pending Service</span>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-yellow-100`}></div>
+                <span className="text-sm">Pending Service</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded bg-green-100"></div>
-                <span className="text-xs text-gray-600">Service In Progress</span>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-green-100`}></div>
+                <span className="text-sm">Service In Progress</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded bg-blue-100"></div>
-                <span className="text-xs text-gray-600">To Reschedule</span>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-blue-100`}></div>
+                <span className="text-sm">To Reschedule</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded bg-teal-100"></div>
-                <span className="text-xs text-gray-600">Completed</span>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-teal-100`}></div>
+                <span className="text-sm">Completed</span>
+              </div>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-amber-100`}></div>
+                <span className="text-sm">Send Reminder</span>
+              </div>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-purple-100`}></div>
+                <span className="text-sm">Reminder Sent</span>
+              </div>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded mr-2 bg-gray-100`}></div>
+                <span className="text-sm">Cancelled</span>
               </div>
             </div>
           </div>

@@ -8,6 +8,8 @@ import {
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
+export type LeadStatus = 'Send Reminder' | 'Reminder Sent' | 'Pending Payment' | 'Pending Service' | 'Service In Progress' | 'Cancelled' | 'To Reschedule' | 'Completed';
+
 export interface Lead {
   id: string; // Changed from number to string for Firestore document IDs
   customer_name: string;
@@ -20,7 +22,7 @@ export interface Lead {
   service_end_time: string;
   notes: string;
   total_price: number;
-  status: string;
+  status: LeadStatus;
   created_at: string;
   handled_by?: string;
 }
@@ -211,7 +213,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
     // Create new lead with timestamp and default status
     const newLead = {
       ...lead,
-      status: 'Pending Service',
+      status: 'Pending Service' as LeadStatus,
       created_at: serverTimestamp()
     };
     
@@ -221,7 +223,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
     return {
       id: docRef.id,
       ...lead,
-      status: 'Pending Service',
+      status: 'Pending Service' as LeadStatus,
       created_at: new Date().toISOString()
     };
   } catch (error) {
@@ -233,7 +235,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'created_at' | 'status'>):
     const newLead = {
       ...lead,
       id: `local-${Date.now()}`,
-      status: 'Pending Service',
+      status: 'Pending Service' as LeadStatus,
       created_at: new Date().toISOString()
     };
     
