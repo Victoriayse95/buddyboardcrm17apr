@@ -4,12 +4,116 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLeads, updateLead, deleteLead, Lead } from '@/lib/leadStorage';
-import { PencilIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '@/utils/format';
 import TableHeader from '@/components/TableHeader';
 import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
+
+// Add LeadDetailsModal component
+function LeadDetailsModal({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
+  if (!lead) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50">
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+            <div className="absolute right-0 top-0 pr-4 pt-4">
+              <button
+                type="button"
+                className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
+                onClick={onClose}
+              >
+                <span className="sr-only">Close</span>
+                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+              </button>
+            </div>
+            
+            <div className="sm:flex sm:items-start">
+              <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-4">
+                  Lead Details
+                </h3>
+                
+                <div className="mt-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Customer</h4>
+                      <p className="mt-1 text-sm text-gray-900">{lead.customer_name}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Contact</h4>
+                      <p className="mt-1 text-sm text-gray-900">{lead.customer_contact}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Service Provider</h4>
+                      <p className="mt-1 text-sm text-gray-900">{lead.service_provider_name}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Provider Contact</h4>
+                      <p className="mt-1 text-sm text-gray-900">{lead.service_provider_contact}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Service Start</h4>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {formatDateDDMMYYYY(lead.service_start_date)} at {lead.service_start_time}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Service End</h4>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {formatDateDDMMYYYY(lead.service_end_date)} at {lead.service_end_time}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Total Price</h4>
+                      <p className="mt-1 text-sm text-gray-900">${lead.total_price}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                      <p className="mt-1 text-sm text-gray-900">{lead.status}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Handled By</h4>
+                    <p className="mt-1 text-sm text-gray-900">{lead.handled_by || 'Not assigned'}</p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Notes</h4>
+                    <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{lead.notes || 'No notes'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <button
+                type="button"
+                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                onClick={onClose}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -28,6 +132,7 @@ export default function HomePage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDays, setCalendarDays] = useState<Array<Date | null>>([]);
   const [calendarLeads, setCalendarLeads] = useState<{ [key: string]: Lead[] }>({});
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -909,7 +1014,7 @@ export default function HomePage() {
                         <div 
                           key={lead.id} 
                           className="text-xs mb-1 p-1 rounded bg-indigo-100 text-indigo-800 truncate cursor-pointer hover:bg-indigo-200"
-                          onClick={() => router.push(`/dashboard/leads?id=${lead.id}`)}
+                          onClick={() => setSelectedLead(lead)}
                           title={`${lead.customer_name} - ${lead.service_provider_name} - $${lead.total_price}`}
                         >
                           {lead.customer_name}
@@ -922,6 +1027,12 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Lead Details Modal */}
+        <LeadDetailsModal 
+          lead={selectedLead} 
+          onClose={() => setSelectedLead(null)} 
+        />
 
         {/* Add a "Clear Filters" button near the search input if there are active filters */}
         {Object.keys(activeFilters).length > 0 && (
