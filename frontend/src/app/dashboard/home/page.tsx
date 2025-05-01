@@ -121,6 +121,7 @@ export default function HomePage() {
   const statusOptions = [
     "Send Reminder",
     "Reminder Sent",
+    "Pending Payment",
     "Pending Service",
     "Service In Progress",
     "Cancelled",
@@ -139,6 +140,24 @@ export default function HomePage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [displayedContactLeads, setDisplayedContactLeads] = useState<Lead[]>([]);
+
+  // Add status color mapping
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pending Payment':
+        return 'bg-red-100 text-red-800 hover:bg-red-200';
+      case 'Pending Service':
+        return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+      case 'Service In Progress':
+        return 'bg-green-100 text-green-800 hover:bg-green-200';
+      case 'To Reschedule':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+      case 'Completed':
+        return 'bg-teal-100 text-teal-800 hover:bg-teal-200';
+      default:
+        return 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200';
+    }
+  };
 
   // Generate filter options for different columns
   const getFilterOptions = (field: string): FilterOption[] => {
@@ -670,7 +689,7 @@ export default function HomePage() {
           <select
             value={lead.status}
             onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-            className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${lead.status === "Send Reminder" ? statusStyle.textClass : ""}`}
+            className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${getStatusColor(lead.status)}`}
           >
             {statusOptions.map(option => (
               <option key={option} value={option}>{option}</option>
@@ -1026,7 +1045,7 @@ export default function HomePage() {
                       {dayLeads.map((lead) => (
                         <div 
                           key={lead.id} 
-                          className="text-xs mb-1 p-1 rounded bg-indigo-100 text-indigo-800 truncate cursor-pointer hover:bg-indigo-200 relative"
+                          className={`text-xs mb-1 p-1 rounded cursor-pointer relative ${getStatusColor(lead.status)}`}
                           onClick={(e) => handleLeadClick(lead, e)}
                           title={`${lead.customer_name} - ${lead.service_provider_name} - $${lead.total_price}`}
                         >
@@ -1036,6 +1055,33 @@ export default function HomePage() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+
+          {/* Status Color Legend */}
+          <div className="mt-4 bg-white p-4 rounded-lg shadow">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Status Colors</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-red-100"></div>
+                <span className="text-xs text-gray-600">Pending Payment</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-yellow-100"></div>
+                <span className="text-xs text-gray-600">Pending Service</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-green-100"></div>
+                <span className="text-xs text-gray-600">Service In Progress</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-blue-100"></div>
+                <span className="text-xs text-gray-600">To Reschedule</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-teal-100"></div>
+                <span className="text-xs text-gray-600">Completed</span>
               </div>
             </div>
           </div>
