@@ -12,102 +12,84 @@ import TableHeader from '@/components/TableHeader';
 import { SortDirection, ActiveFilters, getUniqueValues, getUniqueDatesByMonth, sortItems, applyFilters, FilterOption } from '@/utils/tableUtils';
 
 // Add LeadDetailsModal component
-function LeadDetailsModal({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
-  if (!lead) return null;
+function LeadDetailsModal({ lead, onClose, position }: { lead: Lead | null; onClose: () => void; position: { x: number; y: number } | null }) {
+  if (!lead || !position) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50">
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-            <div className="absolute right-0 top-0 pr-4 pt-4">
-              <button
-                type="button"
-                className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
-                onClick={onClose}
-              >
-                <span className="sr-only">Close</span>
-                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-              </button>
-            </div>
-            
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                  Lead Details
-                </h3>
-                
-                <div className="mt-2 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Customer</h4>
-                      <p className="mt-1 text-sm text-gray-900">{lead.customer_name}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Contact</h4>
-                      <p className="mt-1 text-sm text-gray-900">{lead.customer_contact}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Service Provider</h4>
-                      <p className="mt-1 text-sm text-gray-900">{lead.service_provider_name}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Provider Contact</h4>
-                      <p className="mt-1 text-sm text-gray-900">{lead.service_provider_contact}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Service Start</h4>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {formatDateDDMMYYYY(lead.service_start_date)} at {lead.service_start_time}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Service End</h4>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {formatDateDDMMYYYY(lead.service_end_date)} at {lead.service_end_time}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Total Price</h4>
-                      <p className="mt-1 text-sm text-gray-900">${lead.total_price}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                      <p className="mt-1 text-sm text-gray-900">{lead.status}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Handled By</h4>
-                    <p className="mt-1 text-sm text-gray-900">{lead.handled_by || 'Not assigned'}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Notes</h4>
-                    <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{lead.notes || 'No notes'}</p>
-                  </div>
-                </div>
+    <div 
+      className="fixed z-50"
+      style={{ 
+        top: `${position.y}px`, 
+        left: `${position.x}px`,
+      }}
+    >
+      <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-80">
+        <div className="p-4">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Lead Details
+            </h3>
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-500"
+              onClick={onClose}
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+          
+          <div className="space-y-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-gray-500">Customer</span>
+                <p className="font-medium text-gray-900">{lead.customer_name}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Contact</span>
+                <p className="font-medium text-gray-900">{lead.customer_contact}</p>
               </div>
             </div>
             
-            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-              <button
-                type="button"
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                onClick={onClose}
-              >
-                Close
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-gray-500">Provider</span>
+                <p className="font-medium text-gray-900">{lead.service_provider_name}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Provider Contact</span>
+                <p className="font-medium text-gray-900">{lead.service_provider_contact}</p>
+              </div>
             </div>
+            
+            <div>
+              <span className="text-gray-500">Service Time</span>
+              <p className="font-medium text-gray-900">
+                {lead.service_start_time} - {lead.service_end_time}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-gray-500">Price</span>
+                <p className="font-medium text-gray-900">${lead.total_price}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Status</span>
+                <p className="font-medium text-gray-900">{lead.status}</p>
+              </div>
+            </div>
+            
+            <div>
+              <span className="text-gray-500">Handler</span>
+              <p className="font-medium text-gray-900">{lead.handled_by || 'Not assigned'}</p>
+            </div>
+            
+            {lead.notes && (
+              <div>
+                <span className="text-gray-500">Notes</span>
+                <p className="font-medium text-gray-900 whitespace-pre-wrap">{lead.notes}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -133,6 +115,7 @@ export default function HomePage() {
   const [calendarDays, setCalendarDays] = useState<Array<Date | null>>([]);
   const [calendarLeads, setCalendarLeads] = useState<{ [key: string]: Lead[] }>({});
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Status options for dropdown
   const statusOptions = [
@@ -749,6 +732,36 @@ export default function HomePage() {
     );
   };
 
+  // Add click handler for lead items
+  const handleLeadClick = (lead: Lead, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent calendar cell click
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left;
+    let y = rect.top + rect.height;
+    
+    // Adjust position if too close to bottom of viewport
+    if (y + 400 > window.innerHeight) {
+      y = rect.top - 400; // Show above the clicked element
+    }
+    
+    setSelectedLead(lead);
+    setPopupPosition({ x, y });
+  };
+  
+  // Add click handler for closing popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (selectedLead && !event.defaultPrevented) {
+        setSelectedLead(null);
+        setPopupPosition(null);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [selectedLead]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
@@ -1013,8 +1026,8 @@ export default function HomePage() {
                       {dayLeads.map((lead) => (
                         <div 
                           key={lead.id} 
-                          className="text-xs mb-1 p-1 rounded bg-indigo-100 text-indigo-800 truncate cursor-pointer hover:bg-indigo-200"
-                          onClick={() => setSelectedLead(lead)}
+                          className="text-xs mb-1 p-1 rounded bg-indigo-100 text-indigo-800 truncate cursor-pointer hover:bg-indigo-200 relative"
+                          onClick={(e) => handleLeadClick(lead, e)}
                           title={`${lead.customer_name} - ${lead.service_provider_name} - $${lead.total_price}`}
                         >
                           {lead.customer_name}
@@ -1028,10 +1041,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Lead Details Modal */}
+        {/* Lead Details Popup */}
         <LeadDetailsModal 
           lead={selectedLead} 
-          onClose={() => setSelectedLead(null)} 
+          onClose={() => {
+            setSelectedLead(null);
+            setPopupPosition(null);
+          }}
+          position={popupPosition}
         />
 
         {/* Add a "Clear Filters" button near the search input if there are active filters */}
